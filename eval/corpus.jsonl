@@ -1,16 +1,20 @@
-{"text": "I'll get the grant report to you by Friday.", "isCommitment": true}
-{"text": "On it, will file the ticket this afternoon.", "isCommitment": true}
-{"text": "I can send the onboarding docs to the new caseworker by EOD.", "isCommitment": true}
-{"text": "I'll follow up with the family tomorrow morning.", "isCommitment": true}
-{"text": "We'll deliver the budget draft before Monday.", "isCommitment": true}
-{"text": "I'm going to call the clinic and confirm the appointment.", "isCommitment": true}
-{"text": "I'll review the PR after standup.", "isCommitment": true}
-{"text": "we should grab lunch sometime", "isCommitment": false, "note": "social filler"}
-{"text": "I'll think about it", "isCommitment": false, "note": "non-actionable"}
-{"text": "let's circle back on this later", "isCommitment": false, "note": "vague"}
-{"text": "no rush on any of this", "isCommitment": false}
-{"text": "maybe I'll look into it at some point", "isCommitment": false}
-{"text": "Thanks, that's super helpful!", "isCommitment": false}
-{"text": "Did anyone get a chance to review the deck?", "isCommitment": false, "note": "question, not a promise"}
-{"text": "The deploy finished and everything is green.", "isCommitment": false, "note": "status report"}
-{"text": "Great work everyone on shipping that.", "isCommitment": false}
+{"text": "Can someone follow up with the Diaz family about their housing application?", "isOpenLoop": true, "kind": "request"}
+{"text": "Who can take the intake call for the new client this afternoon?", "isOpenLoop": true, "kind": "request"}
+{"text": "We need someone to drive the food delivery to the shelter tomorrow.", "isOpenLoop": true, "kind": "request"}
+{"text": "This case needs a follow-up before the benefits deadline on Monday.", "isOpenLoop": true, "kind": "request"}
+{"text": "Nobody has picked up the volunteer onboarding for this week.", "isOpenLoop": true, "kind": "request"}
+{"text": "Could someone confirm the clinic appointment for Mr. Okafor?", "isOpenLoop": true, "kind": "request"}
+{"text": "I'll get the grant report to the funder by Friday.", "isOpenLoop": true, "kind": "commitment"}
+{"text": "On it, I'll file the incident report this afternoon.", "isOpenLoop": true, "kind": "commitment"}
+{"text": "I can call the family back and confirm tomorrow.", "isOpenLoop": true, "kind": "commitment"}
+{"text": "I'll follow up with the caseworker after standup.", "isOpenLoop": true, "kind": "commitment"}
+{"text": "We'll deliver the budget draft before Monday.", "isOpenLoop": true, "kind": "commitment"}
+{"text": "we should grab lunch sometime", "isOpenLoop": false, "note": "social filler"}
+{"text": "I'll think about it, no rush", "isOpenLoop": false, "note": "non-actionable + soft"}
+{"text": "let's circle back on this later", "isOpenLoop": false, "note": "vague"}
+{"text": "just FYI, the shelter restocked the pantry", "isOpenLoop": false, "note": "status update"}
+{"text": "Thanks everyone, great work this week!", "isOpenLoop": false, "note": "praise"}
+{"text": "Did anyone see the email from the county?", "isOpenLoop": false, "note": "question, not a request for action"}
+{"text": "maybe we should look into a new intake form at some point", "isOpenLoop": false, "note": "idle musing"}
+{"text": "The deploy finished and everything is green.", "isOpenLoop": false, "note": "status report"}
+{"text": "no worries, already handled that one", "isOpenLoop": false, "note": "already done"}

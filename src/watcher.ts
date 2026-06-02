@@ -17,12 +17,13 @@ export interface Watcher {
   pollCandidates(sinceTs: string): Promise<IncomingMessage[]>;
 
   /**
-   * Ask RTS whether `commitment` looks fulfilled by recent activity in its thread
-   * or channel. Returns the satisfying message, or null. Keeping this behind RTS
+   * Ask RTS whether `loop` looks fulfilled by recent activity in its thread or
+   * channel. Returns the satisfying message, or null. Keeping this behind RTS
    * (rather than re-reading every message) is the scalable, technically interesting
-   * part to highlight for the Best Tech prize.
+   * part to highlight for the Best Tech prize. It is also how the loop is closed:
+   * detecting that the work actually happened, not just nagging on a timer.
    */
-  findFulfillment(commitment: { source: MessageRef; summary: string; ownerId: string }): Promise<IncomingMessage | null>;
+  findFulfillment(loop: { source: MessageRef; summary: string; ownerId: string | null }): Promise<IncomingMessage | null>;
 }
 
 /** Offline stand-in so the pipeline and demo run without a live workspace. */

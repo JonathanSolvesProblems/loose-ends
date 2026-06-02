@@ -1,12 +1,18 @@
 // Core domain types for Loose Ends.
-// This file is platform-agnostic on purpose: it describes commitments and their
-// lifecycle, not Slack. The Slack/RTS/MCP adapters depend on these types, never
-// the other way around.
+//
+// Loose Ends is an org-level coverage-gap safety net for mission-driven Slack
+// workspaces. It tracks "open loops": work that was asked for or promised in a
+// channel and could fall through the cracks. The novel target (vs existing
+// commitment bots) is the UNOWNED request: something asked that nobody has
+// claimed yet. Those are the ones that drop silently.
+//
+// This file is platform-agnostic on purpose. The Slack/RTS/MCP adapters depend
+// on these types, never the other way around.
 
 /**
- * Where a candidate commitment came from. Keeping the raw coordinates lets the
- * ledger dedupe, lets the reviewer jump back to the source, and gives the demo
- * an audit trail.
+ * Where a candidate loop came from. Keeping the raw coordinates lets the ledger
+ * dedupe, lets the reviewer jump back to the source, and gives the demo an audit
+ * trail.
  */
 export interface MessageRef {
   channelId: string;
@@ -24,52 +30,71 @@ export interface IncomingMessage extends MessageRef {
 }
 
 /**
- * The deterministic lifecycle. Transitions are the moat: they are reproducible
- * and auditable, independent of what the LLM said.
- *
- *   OPEN ──(deadline passes, no fulfillment)──> DUE
- *   DUE  ──(grace period passes)──────────────> BROKEN
- *   any  ──(fulfillment detected / user marks)─> FULFILLED
- *   any  ──(user: "not a commitment")──────────> DISMISSED
- *   any  ──(user snoozes)──────────────────────> SNOOZED ──(snooze ends)──> OPEN
+ * What kind of open loop this is.
+ *  - "request":    someone asked for something ("can someone follow up with the
+ *                  Diaz family?"). May be unowned. This is the un-cloned target.
+ *  - "commitment": someone promised to do something ("I'll call them tomorrow").
+ *                  Always has an owner.
  */
-export type CommitmentStatus =
-  | "OPEN"
+export type LoopKind = "request" | "commitment";
+
+/**
+ * The deterministic lifecycle. Transitions are the moat: reproducible and
+ * auditable, independent of what the LLM said.
+ *
+ *   UNOWNED   ──(claimed by a person)──────────────> CLAIMED
+ *   UNOWNED   ──(response SLA passes, still unowned)─> ESCALATED   (ping a coordinator)
+ *   CLAIMED   ──(deadline passes)───────────────────> DUE
+ *   DUE       ──(grace passes)──────────────────────> ESCALATED
+ *   ESCALATED ──(escalation grace passes)───────────> BROKEN
+ *   any       ──(fulfillment detected / marked done)─> FULFILLED
+ *   any       ──(reviewer: not a real loop)──────────> DISMISSED
+ *   any       ──(snoozed)────────────────────────────> SNOOZED ──(snooze ends)──> UNOWNED|CLAIMED
+ */
+export type LoopStatus =
+  | "UNOWNED"
+  | "CLAIMED"
   | "DUE"
+  | "ESCALATED"
   | "BROKEN"
   | "FULFILLED"
   | "SNOOZED"
   | "DISMISSED";
 
 /** What the extractor produces from a single message. */
-export interface ExtractedCommitment {
-  /** The promise, normalized to a short imperative ("send the grant report"). */
+export interface ExtractedLoop {
+  kind: LoopKind;
+  /** Normalized to a short imperative ("follow up with the Diaz family"). */
   summary: string;
-  /** Slack user id of who owes it. */
-  ownerId: string;
+  /** Slack user id of the owner, or null for an unclaimed request. */
+  ownerId: string | null;
   /** Epoch ms the thing is due, or null if no deadline could be grounded. */
   dueAt: number | null;
-  /** 0..1 model confidence this is a real, actionable commitment. */
+  /** 0..1 model confidence this is a real, actionable open loop. */
   confidence: number;
 }
 
-/** A tracked commitment as it lives in the ledger. */
-export interface Commitment extends ExtractedCommitment {
+/** A tracked open loop as it lives in the ledger. */
+export interface Loop extends ExtractedLoop {
   id: string;
-  status: CommitmentStatus;
+  status: LoopStatus;
   source: MessageRef;
   createdAt: number;
   updatedAt: number;
+  /** Set when the loop is escalated; drives the ESCALATED -> BROKEN timer. */
+  escalatedAt?: number;
   /** Set when SNOOZED: epoch ms to reopen. */
   snoozeUntil?: number;
   /** Audit log of every transition, oldest first. */
-  history: Array<{ at: number; from: CommitmentStatus | null; to: CommitmentStatus; reason: string }>;
+  history: Array<{ at: number; from: LoopStatus | null; to: LoopStatus; reason: string }>;
 }
 
 /** A single labeled example in the evaluation corpus. */
 export interface CorpusRow {
   text: string;
-  /** Ground truth: is this an actionable commitment the agent should track? */
-  isCommitment: boolean;
+  /** Ground truth: is this an actionable open loop the agent should track? */
+  isOpenLoop: boolean;
+  /** Expected kind when isOpenLoop is true (for richer scoring). */
+  kind?: LoopKind;
   note?: string;
 }
