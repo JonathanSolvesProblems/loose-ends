@@ -1,0 +1,13 @@
+{
+  "name": "loose-ends",
+  "version": "0.1.0",
+  "description": "A Slack agent that catches dropped commitments before they cause harm.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "node --experimental-strip-types src/index.ts",
+    "eval": "node --experimental-strip-types eval/evaluate.ts",
+    "test": "node --test"
+  },
+  "license": "MIT"
+}

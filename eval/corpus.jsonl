@@ -1,0 +1,16 @@
+{"text": "I'll get the grant report to you by Friday.", "isCommitment": true}
+{"text": "On it, will file the ticket this afternoon.", "isCommitment": true}
+{"text": "I can send the onboarding docs to the new caseworker by EOD.", "isCommitment": true}
+{"text": "I'll follow up with the family tomorrow morning.", "isCommitment": true}
+{"text": "We'll deliver the budget draft before Monday.", "isCommitment": true}
+{"text": "I'm going to call the clinic and confirm the appointment.", "isCommitment": true}
+{"text": "I'll review the PR after standup.", "isCommitment": true}
+{"text": "we should grab lunch sometime", "isCommitment": false, "note": "social filler"}
+{"text": "I'll think about it", "isCommitment": false, "note": "non-actionable"}
+{"text": "let's circle back on this later", "isCommitment": false, "note": "vague"}
+{"text": "no rush on any of this", "isCommitment": false}
+{"text": "maybe I'll look into it at some point", "isCommitment": false}
+{"text": "Thanks, that's super helpful!", "isCommitment": false}
+{"text": "Did anyone get a chance to review the deck?", "isCommitment": false, "note": "question, not a promise"}
+{"text": "The deploy finished and everything is green.", "isCommitment": false, "note": "status report"}
+{"text": "Great work everyone on shipping that.", "isCommitment": false}
