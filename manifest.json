@@ -1,0 +1,62 @@
+{
+  "display_information": {
+    "name": "Loose Ends",
+    "description": "Catches unowned requests and dropped commitments before a person falls through the cracks.",
+    "background_color": "#1b4332",
+    "long_description": "Loose Ends is a coverage-gap safety net for mission-driven Slack workspaces. It watches opted-in channels for open loops (work that was asked for or promised), tracks each through a deterministic ownership-and-fulfillment state machine, and escalates to a backup human before a request is silently lost. It uses Claude to classify request-vs-commitment, the Slack Real-Time Search API for an on-demand 'what's still open here?' lookup, and Block Kit cards for one-tap Claim / Done / Snooze / Dismiss."
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "loose-ends",
+      "always_online": true
+    },
+    "assistant_view": {
+      "assistant_description": "Ask what's still open and unowned in this channel.",
+      "suggested_prompts": [
+        { "title": "What's still open here?", "message": "What's still open here?" },
+        { "title": "What's unowned right now?", "message": "What's unowned right now?" }
+      ]
+    },
+    "slash_commands": [
+      {
+        "command": "/looseends",
+        "description": "Show open loops still tracked in this channel",
+        "usage_hint": "[open | mine]",
+        "should_escape": false
+      }
+    ]
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": [
+        "app_mentions:read",
+        "assistant:write",
+        "channels:history",
+        "groups:history",
+        "chat:write",
+        "commands",
+        "im:history",
+        "reactions:read",
+        "search:read.public",
+        "users:read"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "bot_events": [
+        "app_mention",
+        "assistant_thread_started",
+        "message.channels",
+        "message.groups",
+        "message.im"
+      ]
+    },
+    "interactivity": {
+      "is_enabled": true
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": true,
+    "token_rotation_enabled": false
+  }
+}

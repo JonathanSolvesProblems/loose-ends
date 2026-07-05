@@ -86,29 +86,43 @@ async function demo() {
     { channelId: "C1", ts: "1", userId: "U_LEAD", text: "Can someone follow up with the Diaz family about their housing application?", observedAt: t0 },
     // First-person commitment with a deadline.
     { channelId: "C1", ts: "2", userId: "U_ALICE", text: "I'll get the grant report to the funder by Friday.", observedAt: t0 },
+    // A second unowned request. A volunteer will claim it and actually finish it.
+    { channelId: "C1", ts: "3", userId: "U_LEAD", text: "Could someone confirm the clinic appointment for Mr. Okafor?", observedAt: t0 },
     // Social filler. Must never be tracked.
-    { channelId: "C1", ts: "3", userId: "U_BOB", text: "we should grab lunch sometime", observedAt: t0 },
+    { channelId: "C1", ts: "4", userId: "U_BOB", text: "we should grab lunch sometime", observedAt: t0 },
     // Non-actionable. Must never be tracked.
-    { channelId: "C1", ts: "4", userId: "U_CARA", text: "I'll think about it, no rush", observedAt: t0 },
+    { channelId: "C1", ts: "5", userId: "U_CARA", text: "I'll think about it, no rush", observedAt: t0 },
   ];
-  const agent = new LooseEndsAgent(new MockWatcher(script), new HeuristicExtractor(), new MockActionSink());
+  // The evidence that later closes the Okafor loop. This is what verifies the work
+  // actually landed (the moat) — not a timer, an actual message in the channel.
+  const evidence: IncomingMessage = {
+    channelId: "C1", ts: "6", userId: "U_VOL",
+    text: "Confirmed Mr. Okafor's clinic appointment for Thursday, all set.", observedAt: t0 + 6 * DAY,
+  };
+  const watcher = new MockWatcher(script, [{ match: "okafor", message: evidence }]);
+  const agent = new LooseEndsAgent(watcher, new HeuristicExtractor(), new MockActionSink());
 
-  await agent.step(t0); // ingest
-  await agent.step(t0 + 5 * DAY); // both open loops escalate: nobody acted in time
+  await agent.step(t0); // ingest: Diaz + Okafor UNOWNED, grant CLAIMED, filler ignored
+  // A volunteer immediately takes the Okafor confirmation ("C1:3" = channelId:ts).
+  await agent.review("C1:3", { kind: "claim", ownerId: "U_VOL" }, t0);
 
+  await agent.step(t0 + 5 * DAY); // Diaz + grant escalate: nobody acted in time
   // The rescue: a coordinator sees the escalated card and claims the Diaz request.
-  // "C1:1" is the loop id (channelId:ts) of the unowned request.
   await agent.review("C1:1", { kind: "claim", ownerId: "U_COORDINATOR" }, t0 + 5 * DAY);
 
-  await agent.step(t0 + 9 * DAY); // time moves on; the unacted commitment breaks
+  watcher.revealFulfillments(); // later, the "confirmed" message lands in the channel
+  await agent.step(t0 + 9 * DAY); // grant breaks; Okafor is FULFILLED on that evidence
 
   for (const loop of agent.snapshot()) {
     console.log(`${loop.status.padEnd(10)} ${loop.kind.padEnd(11)} ${loop.summary}`);
   }
-  // Expect: the Diaz family request was CLAIMED in time (the safety net worked);
-  // Alice's grant report is BROKEN (escalated, still nobody closed it). The lunch
-  // invite and "I'll think about it" never enter the ledger. That silence is the
-  // negative control.
+  // Expect four beats of the full story:
+  //   CLAIMED   Diaz request  — escalated, then rescued by a coordinator in time.
+  //   BROKEN    grant report  — deadline + grace passed with NO evidence ("closed is
+  //                             not done"); every commitment bot would mark it done.
+  //   FULFILLED Okafor        — verified on real evidence in the channel, not a timer.
+  // The lunch invite and "I'll think about it" never enter the ledger. That silence
+  // is the negative control.
 }
 
 import { pathToFileURL } from "node:url";

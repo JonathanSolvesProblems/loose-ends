@@ -1,4 +1,4 @@
-// The hands: governed write-back through an MCP server, behind a human-review gate.
+// The hands: the card model + review-gate decisions, behind a human-review gate.
 //
 // Nothing here writes to the system of record without an explicit approved action.
 // The agent proposes; a person claims / confirms / dismisses; only then do we
@@ -75,10 +75,9 @@ export class MockActionSink implements ActionSink {
   }
 }
 
-/**
- * TODO(week4): implement McpActionSink.
- *   sendCard       -> chat.postEphemeral with the Block Kit card.
- *   createFollowUp -> MCP tool call that writes a Slack List item / reminder / Task.
- * The MCP server is what makes the write governed and portable across systems of
- * record; keep the create idempotent on loop id.
- */
+// The REAL write-back lives in src/slack/app.ts (it needs the live WebClient and
+// channel context, so it drives Slack directly rather than through this offline
+// sink): cards via chat.postMessage/update, and an optional Slack List row via
+// the Web API `slackLists.items.create`. Note the Slack hosted MCP server has NO
+// Lists/task/reminder tool (message + canvas writes only), which is why write-back
+// uses the Web API directly instead of MCP.

@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 720" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4b5f57"/>
+    </marker>
+    <marker id="arrowMoat" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1b4332"/>
+    </marker>
+    <style>
+      .box{fill:#ffffff;stroke:#1b4332;stroke-width:1.5;}
+      .gen{fill:#fff7ed;stroke:#b45309;stroke-width:1.5;}
+      .ledger{fill:#e8f2ec;stroke:#1b4332;stroke-width:3;}
+      .side{fill:#f0f5f2;stroke:#1b4332;stroke-width:1.5;}
+      .t{fill:#14342a;font-size:15px;font-weight:600;}
+      .sub{fill:#4b5f57;font-size:12px;font-weight:400;}
+      .lane{fill:#8aa79b;font-size:11px;font-weight:700;letter-spacing:1px;}
+      .flow{stroke:#4b5f57;stroke-width:2;fill:none;}
+      .moat{stroke:#1b4332;stroke-width:2.5;fill:none;}
+      .dash{stroke:#8aa79b;stroke-width:1.6;fill:none;stroke-dasharray:5 4;}
+    </style>
+  </defs>
+
+  <!-- Title -->
+  <text x="580" y="38" text-anchor="middle" fill="#1b4332" font-size="26" font-weight="700">Loose Ends — Architecture</text>
+  <text x="580" y="62" text-anchor="middle" class="sub" font-size="14">Catches unowned asks in Slack; verifies the work landed on evidence, not a timer.</text>
+
+  <!-- Central pipeline flow arrows -->
+  <line class="flow" x1="560" y1="146" x2="560" y2="167" marker-end="url(#arrow)"/>
+  <line class="flow" x1="560" y1="224" x2="560" y2="245" marker-end="url(#arrow)"/>
+  <line class="flow" x1="560" y1="302" x2="560" y2="323" marker-end="url(#arrow)"/>
+  <line class="flow" x1="560" y1="380" x2="560" y2="401" marker-end="url(#arrow)"/>
+  <line class="flow" x1="560" y1="472" x2="560" y2="489" marker-end="url(#arrow)"/>
+  <line class="flow" x1="560" y1="546" x2="560" y2="567" marker-end="url(#arrow)"/>
+
+  <!-- Lane labels -->
+  <text x="366" y="200" text-anchor="end" class="lane">EYES</text>
+  <text x="366" y="356" text-anchor="end" class="lane">JUDGMENT</text>
+  <text x="366" y="441" text-anchor="end" class="lane">SPINE</text>
+  <text x="366" y="522" text-anchor="end" class="lane">HANDS</text>
+
+  <!-- S1 Slack workspace -->
+  <rect class="box" x="380" y="90" width="360" height="56" rx="10"/>
+  <text x="560" y="115" text-anchor="middle" class="t">Slack workspace</text>
+  <text x="560" y="134" text-anchor="middle" class="sub">opted-in channels the bot is invited to</text>
+
+  <!-- S2 Events API -->
+  <rect class="box" x="380" y="168" width="360" height="56" rx="10"/>
+  <text x="560" y="193" text-anchor="middle" class="t">Events API · message.channels</text>
+  <text x="560" y="212" text-anchor="middle" class="sub">push stream, real-time, not throttled</text>
+
+  <!-- S3 noise filter -->
+  <rect class="box" x="380" y="246" width="360" height="56" rx="10"/>
+  <text x="560" y="271" text-anchor="middle" class="t">Deterministic noise filter</text>
+  <text x="560" y="290" text-anchor="middle" class="sub">drops filler, guarantees silence, saves tokens</text>
+
+  <!-- S4 LLM (generative) -->
+  <rect class="gen" x="380" y="324" width="360" height="56" rx="10"/>
+  <text x="560" y="349" text-anchor="middle" class="t">LLM — the judgment</text>
+  <text x="560" y="368" text-anchor="middle" class="sub">request vs commitment · owner · deadline</text>
+
+  <!-- S5 Ledger (emphasized) -->
+  <rect class="ledger" x="380" y="402" width="360" height="70" rx="10"/>
+  <text x="560" y="430" text-anchor="middle" class="t">Deterministic ledger</text>
+  <text x="560" y="449" text-anchor="middle" class="sub">ownership · SLA timers · escalation to backup human</text>
+  <text x="560" y="465" text-anchor="middle" class="sub">reproducible · fully audited</text>
+
+  <!-- S6 Block Kit gate -->
+  <rect class="box" x="380" y="490" width="360" height="56" rx="10"/>
+  <text x="560" y="515" text-anchor="middle" class="t">Block Kit review gate</text>
+  <text x="560" y="534" text-anchor="middle" class="sub">Claim / Done / Snooze / Dismiss</text>
+
+  <!-- S7 write-back -->
+  <rect class="box" x="380" y="568" width="360" height="56" rx="10"/>
+  <text x="560" y="593" text-anchor="middle" class="t">Governed write-back</text>
+  <text x="560" y="612" text-anchor="middle" class="sub">chat.postEphemeral / Slack List (behind the human gate)</text>
+
+  <!-- Right callout: the moat (fulfillment) -->
+  <rect class="side" x="792" y="392" width="336" height="80" rx="10"/>
+  <text x="960" y="418" text-anchor="middle" class="t" fill="#1b4332">Evidence-based fulfillment</text>
+  <text x="960" y="437" text-anchor="middle" class="sub">a later "closed out the case" message</text>
+  <text x="960" y="454" text-anchor="middle" class="sub">→ verify → FULFILLED, not a timeout</text>
+  <text x="960" y="468" text-anchor="middle" class="sub" font-weight="700" fill="#1b4332">THE MOAT · closed ≠ done</text>
+
+  <!-- dashed: fulfillment reads the same event stream -->
+  <path class="dash" d="M740,196 H960 V392"/>
+  <text x="968" y="300" class="lane" fill="#8aa79b">reads the</text>
+  <text x="968" y="314" class="lane" fill="#8aa79b">same stream</text>
+
+  <!-- solid moat arrow: fulfillment closes the loop back into the ledger -->
+  <path class="moat" d="M792,440 H744" marker-end="url(#arrowMoat)"/>
+
+  <!-- Right callout: RTS on-demand -->
+  <rect class="side" x="792" y="508" width="336" height="76" rx="10"/>
+  <text x="960" y="533" text-anchor="middle" class="t">RTS · assistant.search.context</text>
+  <text x="960" y="552" text-anchor="middle" class="sub">coordinator @-mention → action_token</text>
+  <text x="960" y="569" text-anchor="middle" class="sub">on-demand "what's still open here?"</text>
+
+  <!-- ledger answers the RTS lookup -->
+  <path class="flow" d="M740,455 H766 V546 H790" marker-end="url(#arrow)"/>
+
+  <!-- Legend -->
+  <rect x="40" y="648" width="1080" height="52" rx="8" fill="#f7faf8" stroke="#dde7e2"/>
+  <rect x="60" y="666" width="16" height="16" rx="3" class="box"/>
+  <text x="84" y="679" class="sub" font-size="13">Deterministic (auditable)</text>
+  <rect x="250" y="666" width="16" height="16" rx="3" class="gen"/>
+  <text x="274" y="679" class="sub" font-size="13">Generative — LLM (OpenAI / Claude)</text>
+  <text x="1100" y="679" text-anchor="end" class="sub" font-size="13" font-weight="600" fill="#1b4332">Eligible tech: Slack AI · Real-Time Search · Events API + Block Kit</text>
+</svg>

@@ -1,20 +1,48 @@
-{"text": "Can someone follow up with the Diaz family about their housing application?", "isOpenLoop": true, "kind": "request"}
-{"text": "Who can take the intake call for the new client this afternoon?", "isOpenLoop": true, "kind": "request"}
-{"text": "We need someone to drive the food delivery to the shelter tomorrow.", "isOpenLoop": true, "kind": "request"}
-{"text": "This case needs a follow-up before the benefits deadline on Monday.", "isOpenLoop": true, "kind": "request"}
-{"text": "Nobody has picked up the volunteer onboarding for this week.", "isOpenLoop": true, "kind": "request"}
-{"text": "Could someone confirm the clinic appointment for Mr. Okafor?", "isOpenLoop": true, "kind": "request"}
-{"text": "I'll get the grant report to the funder by Friday.", "isOpenLoop": true, "kind": "commitment"}
-{"text": "On it, I'll file the incident report this afternoon.", "isOpenLoop": true, "kind": "commitment"}
-{"text": "I can call the family back and confirm tomorrow.", "isOpenLoop": true, "kind": "commitment"}
-{"text": "I'll follow up with the caseworker after standup.", "isOpenLoop": true, "kind": "commitment"}
-{"text": "We'll deliver the budget draft before Monday.", "isOpenLoop": true, "kind": "commitment"}
+{"text": "Can someone follow up with the Diaz family about their housing application?", "isOpenLoop": true, "kind": "request", "note": "explicit unowned ask"}
+{"text": "Who can take the intake call for the new client this afternoon?", "isOpenLoop": true, "kind": "request", "note": "explicit unowned ask"}
+{"text": "We need someone to drive the food delivery to the shelter tomorrow.", "isOpenLoop": true, "kind": "request", "note": "explicit unowned ask"}
+{"text": "This case needs a follow-up before the benefits deadline on Monday.", "isOpenLoop": true, "kind": "request", "note": "explicit unowned ask"}
+{"text": "Nobody has picked up the volunteer onboarding for this week.", "isOpenLoop": true, "kind": "request", "note": "explicit unowned ask"}
+{"text": "Could someone confirm the clinic appointment for Mr. Okafor?", "isOpenLoop": true, "kind": "request", "note": "explicit unowned ask"}
+{"text": "The Diaz family still hasn't heard back about their housing application.", "isOpenLoop": true, "kind": "request", "note": "implied unowned ask, no request keyword"}
+{"text": "Mr. Okafor's clinic appointment is still unconfirmed and it's tomorrow.", "isOpenLoop": true, "kind": "request", "note": "implied unowned ask"}
+{"text": "The Nguyen family was promised a callback two days ago and we've gone quiet.", "isOpenLoop": true, "kind": "request", "note": "implied dropped ask"}
+{"text": "The intake form for the new shelter client is still blank.", "isOpenLoop": true, "kind": "request", "note": "implied unowned task"}
+{"text": "Still no one assigned to the Saturday warming-center shift.", "isOpenLoop": true, "kind": "request", "note": "implied coverage gap, no regex keyword"}
+{"text": "We keep saying we'll re-check the Alvarez benefits paperwork and it hasn't happened.", "isOpenLoop": true, "kind": "request", "note": "implied dropped, first-person-plural but not an owned commitment"}
+{"text": "Reminder that the county referral for the Booker kids is sitting untouched.", "isOpenLoop": true, "kind": "request", "note": "implied unowned"}
+{"text": "I'll get the grant report to the funder by Friday.", "isOpenLoop": true, "kind": "commitment", "note": "explicit first-person commitment"}
+{"text": "On it, I'll file the incident report this afternoon.", "isOpenLoop": true, "kind": "commitment", "note": "explicit commitment"}
+{"text": "I can call the family back and confirm tomorrow.", "isOpenLoop": true, "kind": "commitment", "note": "explicit commitment"}
+{"text": "I'll follow up with the caseworker after standup.", "isOpenLoop": true, "kind": "commitment", "note": "explicit commitment"}
+{"text": "We'll deliver the budget draft before Monday.", "isOpenLoop": true, "kind": "commitment", "note": "explicit team commitment"}
+{"text": "I've got the intake call at 2, I'll take it.", "isOpenLoop": true, "kind": "commitment", "note": "explicit commitment"}
+{"text": "Sending the grant report to the funder this afternoon.", "isOpenLoop": true, "kind": "commitment", "note": "commitment without 'I will' — regex miss"}
+{"text": "Taking the intake call at 2.", "isOpenLoop": true, "kind": "commitment", "note": "commitment without 'I' subject — regex miss"}
+{"text": "Got it, will loop back to the shelter about the pantry restock by EOD.", "isOpenLoop": true, "kind": "commitment", "note": "commitment, regex miss"}
+{"text": "Me for the food run tomorrow, I'll grab the van keys.", "isOpenLoop": true, "kind": "commitment", "note": "commitment, awkward phrasing"}
+{"text": "Happy to own the volunteer onboarding this week.", "isOpenLoop": true, "kind": "commitment", "note": "commitment via 'happy to own' — regex miss"}
+{"text": "Let me handle the Alvarez paperwork before the deadline.", "isOpenLoop": true, "kind": "commitment", "note": "commitment via 'let me' — regex miss"}
 {"text": "we should grab lunch sometime", "isOpenLoop": false, "note": "social filler"}
 {"text": "I'll think about it, no rush", "isOpenLoop": false, "note": "non-actionable + soft"}
-{"text": "let's circle back on this later", "isOpenLoop": false, "note": "vague"}
+{"text": "let's circle back on this later", "isOpenLoop": false, "note": "vague deferral"}
 {"text": "just FYI, the shelter restocked the pantry", "isOpenLoop": false, "note": "status update"}
 {"text": "Thanks everyone, great work this week!", "isOpenLoop": false, "note": "praise"}
-{"text": "Did anyone see the email from the county?", "isOpenLoop": false, "note": "question, not a request for action"}
+{"text": "Did anyone see the email from the county?", "isOpenLoop": false, "note": "question for information, not a task request"}
 {"text": "maybe we should look into a new intake form at some point", "isOpenLoop": false, "note": "idle musing"}
 {"text": "The deploy finished and everything is green.", "isOpenLoop": false, "note": "status report"}
 {"text": "no worries, already handled that one", "isOpenLoop": false, "note": "already done"}
+{"text": "closed out the Diaz housing case, they got the voucher", "isOpenLoop": false, "note": "completion report, not a new loop"}
+{"text": "Who's the new caseworker starting Monday?", "isOpenLoop": false, "note": "question for info, looks like a 'who' request but isn't"}
+{"text": "I'll be out of office Friday for a family thing.", "isOpenLoop": false, "note": "availability, not a task — 'I'll' false-positive trap"}
+{"text": "I'll be at the clinic tomorrow if anyone needs me.", "isOpenLoop": false, "note": "presence, not a task — 'I'll' false-positive trap"}
+{"text": "Can we make the newsletter a bit more colorful next month?", "isOpenLoop": false, "note": "soft suggestion, not an urgent open loop"}
+{"text": "Great, sounds like a plan for the retreat.", "isOpenLoop": false, "note": "agreement filler"}
+{"text": "The pantry delivery went out and the family confirmed receipt.", "isOpenLoop": false, "note": "completion report"}
+{"text": "Reminder: standup is at 9:30 tomorrow.", "isOpenLoop": false, "note": "logistics announcement"}
+{"text": "Honestly just venting, the paperwork load is brutal this week.", "isOpenLoop": false, "note": "venting"}
+{"text": "We should really celebrate hitting 100 families served.", "isOpenLoop": false, "note": "aspirational filler"}
+{"text": "on it", "isOpenLoop": false, "note": "acknowledgement with no task in the message itself"}
+{"text": "Anyone know if the county office is open on the holiday?", "isOpenLoop": false, "note": "question for info"}
+{"text": "The Alvarez benefits paperwork is all filed and approved.", "isOpenLoop": false, "note": "completion report"}
+{"text": "Can someone confirm we still have your correct phone number on file?", "isOpenLoop": false, "note": "boilerplate directed at a client, not a team task"}

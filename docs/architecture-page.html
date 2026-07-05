@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loose Ends — Architecture</title>
+<style>
+  :root {
+    --ground: #f3f7f4;
+    --surface: #ffffff;
+    --paper: #ffffff;
+    --ink: #12261f;
+    --muted: #566b62;
+    --accent: #1b4332;
+    --accent-2: #2d6a4f;
+    --amber: #b45309;
+    --border: #d6e2db;
+    --chip-bg: #eaf1ed;
+    --font-display: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, sans-serif;
+    --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+    --shadow: 0 1px 2px rgba(18,38,31,.06), 0 12px 32px -12px rgba(18,38,31,.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0c1411;
+      --surface: #131e19;
+      --ink: #e8efe9;
+      --muted: #90a69c;
+      --accent: #6bbf92;
+      --accent-2: #86cfa6;
+      --amber: #dc9450;
+      --border: #21322b;
+      --chip-bg: #17251f;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 18px 44px -16px rgba(0,0,0,.7);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { background: var(--ground); }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1060px;
+    margin: 0 auto;
+    padding: clamp(28px, 6vw, 72px) clamp(18px, 4vw, 40px) 64px;
+  }
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent-2);
+    font-weight: 600;
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(30px, 5.2vw, 48px);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0 0 16px;
+    color: var(--ink);
+  }
+  .thesis {
+    font-size: clamp(16px, 2.1vw, 19px);
+    color: var(--muted);
+    max-width: 60ch;
+    margin: 0 0 8px;
+  }
+  .thesis b { color: var(--ink); font-weight: 600; }
+
+  .board {
+    margin: 34px 0 30px;
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 20px;
+    overflow-x: auto;
+  }
+  .board svg { display: block; width: 100%; height: auto; min-width: 720px; }
+
+  .meta { display: grid; grid-template-columns: 1fr; gap: 26px; }
+  @media (min-width: 720px) {
+    .meta { grid-template-columns: 1.15fr 1fr; align-items: start; }
+  }
+
+  .label {
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    margin: 0 0 12px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--accent);
+    background: var(--chip-bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 12px;
+    white-space: nowrap;
+  }
+
+  .stat {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    padding: 18px 20px;
+  }
+  .stat .row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .stat .row:last-of-type { border-bottom: 0; }
+  .stat .k { font-size: 14px; color: var(--muted); }
+  .stat .v {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--accent);
+  }
+  .stat .v .from { color: var(--muted); font-weight: 500; font-size: 13px; }
+  .stat .note { margin: 12px 0 0; font-size: 12px; color: var(--muted); }
+
+  .anchor {
+    margin: 30px 0 0;
+    padding: 18px 20px;
+    border-left: 3px solid var(--amber);
+    background: var(--chip-bg);
+    border-radius: 0 10px 10px 0;
+    font-size: 15px;
+    color: var(--ink);
+  }
+  .anchor b { color: var(--amber); }
+
+  footer {
+    margin-top: 40px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+    font-size: 12.5px;
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Slack Agent Builder Challenge · Agent for Good</p>
+  <h1>Loose&nbsp;Ends — Architecture</h1>
+  <p class="thesis">
+    Catches asks in Slack that <b>nobody accepted</b>, and only marks them done
+    once it finds <b>evidence the work actually happened</b> — not because a timer
+    ran out.
+  </p>
+
+  <div class="board" role="img" aria-label="Architecture: Slack Events API ingestion feeds a deterministic noise filter, then an LLM classifier, then a deterministic ledger of ownership and escalation timers, then a Block Kit review gate and governed write-back. Evidence-based fulfillment reads the same stream to verify completion, and an on-demand Real-Time Search lookup answers what is still open.">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 720" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#4b5f57"/>
+        </marker>
+        <marker id="arrowMoat" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#1b4332"/>
+        </marker>
+        <style>
+          .box{fill:#ffffff;stroke:#1b4332;stroke-width:1.5;}
+          .gen{fill:#fff7ed;stroke:#b45309;stroke-width:1.5;}
+          .ledger{fill:#e8f2ec;stroke:#1b4332;stroke-width:3;}
+          .t{fill:#14342a;font-size:15px;font-weight:600;}
+          .sub{fill:#4b5f57;font-size:12px;font-weight:400;}
+          .lane{fill:#8aa79b;font-size:11px;font-weight:700;letter-spacing:1px;}
+          .flow{stroke:#4b5f57;stroke-width:2;fill:none;}
+          .moat{stroke:#1b4332;stroke-width:2.5;fill:none;}
+          .dash{stroke:#8aa79b;stroke-width:1.6;fill:none;stroke-dasharray:5 4;}
+        </style>
+      </defs>
+      <text x="580" y="38" text-anchor="middle" fill="#1b4332" font-size="26" font-weight="700">Loose Ends — Architecture</text>
+      <text x="580" y="62" text-anchor="middle" class="sub" font-size="14">Catches unowned asks in Slack; verifies the work landed on evidence, not a timer.</text>
+      <line class="flow" x1="560" y1="146" x2="560" y2="167" marker-end="url(#arrow)"/>
+      <line class="flow" x1="560" y1="224" x2="560" y2="245" marker-end="url(#arrow)"/>
+      <line class="flow" x1="560" y1="302" x2="560" y2="323" marker-end="url(#arrow)"/>
+      <line class="flow" x1="560" y1="380" x2="560" y2="401" marker-end="url(#arrow)"/>
+      <line class="flow" x1="560" y1="472" x2="560" y2="489" marker-end="url(#arrow)"/>
+      <line class="flow" x1="560" y1="546" x2="560" y2="567" marker-end="url(#arrow)"/>
+      <text x="366" y="200" text-anchor="end" class="lane">EYES</text>
+      <text x="366" y="356" text-anchor="end" class="lane">JUDGMENT</text>
+      <text x="366" y="441" text-anchor="end" class="lane">SPINE</text>
+      <text x="366" y="522" text-anchor="end" class="lane">HANDS</text>
+      <rect class="box" x="380" y="90" width="360" height="56" rx="10"/>
+      <text x="560" y="115" text-anchor="middle" class="t">Slack workspace</text>
+      <text x="560" y="134" text-anchor="middle" class="sub">opted-in channels the bot is invited to</text>
+      <rect class="box" x="380" y="168" width="360" height="56" rx="10"/>
+      <text x="560" y="193" text-anchor="middle" class="t">Events API · message.channels</text>
+      <text x="560" y="212" text-anchor="middle" class="sub">push stream, real-time, not throttled</text>
+      <rect class="box" x="380" y="246" width="360" height="56" rx="10"/>
+      <text x="560" y="271" text-anchor="middle" class="t">Deterministic noise filter</text>
+      <text x="560" y="290" text-anchor="middle" class="sub">drops filler, guarantees silence, saves tokens</text>
+      <rect class="gen" x="380" y="324" width="360" height="56" rx="10"/>
+      <text x="560" y="349" text-anchor="middle" class="t">LLM — the judgment</text>
+      <text x="560" y="368" text-anchor="middle" class="sub">request vs commitment · owner · deadline</text>
+      <rect class="ledger" x="380" y="402" width="360" height="70" rx="10"/>
+      <text x="560" y="430" text-anchor="middle" class="t">Deterministic ledger</text>
+      <text x="560" y="449" text-anchor="middle" class="sub">ownership · SLA timers · escalation to backup human</text>
+      <text x="560" y="465" text-anchor="middle" class="sub">reproducible · fully audited</text>
+      <rect class="box" x="380" y="490" width="360" height="56" rx="10"/>
+      <text x="560" y="515" text-anchor="middle" class="t">Block Kit review gate</text>
+      <text x="560" y="534" text-anchor="middle" class="sub">Claim / Done / Snooze / Dismiss</text>
+      <rect class="box" x="380" y="568" width="360" height="56" rx="10"/>
+      <text x="560" y="593" text-anchor="middle" class="t">Governed write-back</text>
+      <text x="560" y="612" text-anchor="middle" class="sub">chat.postEphemeral / Slack List (behind the human gate)</text>
+      <rect x="792" y="392" width="336" height="80" rx="10" fill="#f0f5f2" stroke="#1b4332" stroke-width="1.5"/>
+      <text x="960" y="418" text-anchor="middle" class="t" fill="#1b4332">Evidence-based fulfillment</text>
+      <text x="960" y="437" text-anchor="middle" class="sub">a later "closed out the case" message</text>
+      <text x="960" y="454" text-anchor="middle" class="sub">→ verify → FULFILLED, not a timeout</text>
+      <text x="960" y="468" text-anchor="middle" class="sub" font-weight="700" fill="#1b4332">THE MOAT · closed ≠ done</text>
+      <path class="dash" d="M740,196 H960 V392"/>
+      <text x="968" y="300" class="lane" fill="#8aa79b">reads the</text>
+      <text x="968" y="314" class="lane" fill="#8aa79b">same stream</text>
+      <path class="moat" d="M792,440 H744" marker-end="url(#arrowMoat)"/>
+      <rect x="792" y="508" width="336" height="76" rx="10" fill="#f0f5f2" stroke="#1b4332" stroke-width="1.5"/>
+      <text x="960" y="533" text-anchor="middle" class="t">RTS · assistant.search.context</text>
+      <text x="960" y="552" text-anchor="middle" class="sub">coordinator @-mention → action_token</text>
+      <text x="960" y="569" text-anchor="middle" class="sub">on-demand "what's still open here?"</text>
+      <path class="flow" d="M740,455 H766 V546 H790" marker-end="url(#arrow)"/>
+      <rect x="40" y="648" width="1080" height="52" rx="8" fill="#f7faf8" stroke="#dde7e2"/>
+      <rect x="60" y="666" width="16" height="16" rx="3" class="box"/>
+      <text x="84" y="679" class="sub" font-size="13">Deterministic (auditable)</text>
+      <rect x="250" y="666" width="16" height="16" rx="3" class="gen"/>
+      <text x="274" y="679" class="sub" font-size="13">Generative — LLM (OpenAI / Claude)</text>
+      <text x="1100" y="679" text-anchor="end" class="sub" font-size="13" font-weight="600" fill="#1b4332">Eligible tech: Slack AI · Real-Time Search · Events API + Block Kit</text>
+    </svg>
+  </div>
+
+  <div class="meta">
+    <div>
+      <p class="label">Three eligible technologies, each load-bearing</p>
+      <div class="chips">
+        <span class="chip">Slack AI — LLM classification</span>
+        <span class="chip">Real-Time Search API</span>
+        <span class="chip">Events API + Block Kit</span>
+        <span class="chip">+ deterministic ledger</span>
+      </div>
+      <div class="anchor">
+        Even when a social-services referral is marked <b>&ldquo;closed,&rdquo;</b> only
+        <b>38%</b> of clients actually received the service (JAMA Network Open,
+        2024). Loose Ends is the safety net that checks.
+      </div>
+    </div>
+
+    <div class="stat" aria-label="Extraction accuracy, measured">
+      <p class="label" style="margin-bottom:14px;">Extraction accuracy — measured</p>
+      <div class="row"><span class="k">Recall (asks caught)</span><span class="v">100% <span class="from">&larr; 52% regex</span></span></div>
+      <div class="row"><span class="k">Precision</span><span class="v">92.6% <span class="from">&larr; 76.5%</span></span></div>
+      <div class="row"><span class="k">False-positive rate</span><span class="v">8.7% <span class="from">&larr; 17.4%</span></span></div>
+      <div class="row"><span class="k">Request vs commitment</span><span class="v">100%</span></div>
+      <p class="note">gpt-4o-mini over a 48-message frontline corpus. The regex baseline is what a weekend clone tops out at.</p>
+    </div>
+  </div>
+
+  <footer>
+    <span>Slack Agent for Good</span>
+    <span>·</span>
+    <span>TypeScript · Bolt (Socket Mode) · OpenAI</span>
+    <span>·</span>
+    <span>Deterministic ledger + evidence-based verification</span>
+  </footer>
+</div>
+</body>
+</html>

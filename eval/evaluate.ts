@@ -1,17 +1,27 @@
-// The evaluation harness: this is the moat made measurable.
+// The evaluation harness: the moat made measurable, and made honest.
 //
-// It runs the extractor over a labeled corpus and reports the numbers you put on
-// screen in the demo: precision, recall, the FALSE-POSITIVE RATE (how often the
-// agent would have bothered someone about a non-loop), and a kind-accuracy figure
-// for the request-vs-commitment split that competitors do not attempt. A weekend
-// clone has no number here; you do.
+// It runs an extractor over a labeled frontline corpus and reports precision,
+// recall, the FALSE-POSITIVE RATE (how often the agent would have bothered
+// someone about a non-loop), and a kind-accuracy figure for the request-vs-
+// commitment split that competitors do not attempt.
 //
-// Run: npm run eval
+// Two modes:
+//   npm run eval       -> HeuristicExtractor (regex, offline). This is the
+//                         ceiling of a weekend "detect a promise" clone. The
+//                         corpus deliberately includes implied asks it can't see
+//                         and "I'll be out Friday"-style traps it false-fires on,
+//                         so this number is honest, not a tautology.
+//   npm run eval:llm   -> LlmExtractor (real Claude). Needs ANTHROPIC_API_KEY.
+//                         This is where the AI earns its place: it recovers the
+//                         phrasings the regex misses and rejects the traps.
+//
+// The delta between the two runs is the argument for the AI being load-bearing
+// rather than bolted on.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { HeuristicExtractor, type Extractor } from "../src/extractor.ts";
+import { HeuristicExtractor, LlmExtractor, type Extractor } from "../src/extractor.ts";
 import type { CorpusRow, IncomingMessage } from "../src/types.ts";
 
 function loadCorpus(): CorpusRow[] {
@@ -63,11 +73,38 @@ async function evaluate(extractor: Extractor, corpus: CorpusRow[]) {
   return { tp, fp, tn, fn, precision, recall, falsePositiveRate, kindAccuracy, mistakes };
 }
 
+async function pickExtractor(): Promise<{ name: string; extractor: Extractor }> {
+  if (process.argv.includes("--llm")) {
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    const baseURL = process.env.LOOSE_ENDS_LLM_BASE_URL || undefined;
+    const tz = Number(process.env.LOOSE_ENDS_TZ_OFFSET) || 0;
+
+    // Same bring-your-own-model resolution as the app: OpenAI (or a local
+    // endpoint) if present, else Anthropic.
+    let settings: { provider: "openai" | "anthropic"; apiKey: string; model: string; baseURL?: string };
+    if (openaiKey || baseURL) {
+      settings = { provider: "openai", apiKey: openaiKey || "local", model: process.env.LOOSE_ENDS_MODEL || "gpt-4o-mini", baseURL };
+    } else if (anthropicKey) {
+      settings = { provider: "anthropic", apiKey: anthropicKey, model: process.env.LOOSE_ENDS_MODEL || "claude-haiku-4-5" };
+    } else {
+      console.error("--llm needs OPENAI_API_KEY or ANTHROPIC_API_KEY (or LOOSE_ENDS_LLM_BASE_URL). See .env.example.");
+      process.exit(1);
+    }
+    // Dynamic import so the default heuristic run never loads an LLM SDK.
+    const { createLlm } = await import("../src/llm.ts");
+    return { name: `LlmExtractor (${settings.provider}: ${settings.model})`, extractor: new LlmExtractor(createLlm(settings), tz) };
+  }
+  return { name: "HeuristicExtractor (regex, offline)", extractor: new HeuristicExtractor() };
+}
+
 const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
 
 const corpus = loadCorpus();
-const r = await evaluate(new HeuristicExtractor(), corpus);
+const { name, extractor } = await pickExtractor();
+const r = await evaluate(extractor, corpus);
 
+console.log(`extractor:            ${name}`);
 console.log(`corpus size:          ${corpus.length}`);
 console.log(`precision:            ${pct(r.precision)}`);
 console.log(`recall:               ${pct(r.recall)}`);
@@ -75,6 +112,6 @@ console.log(`false-positive rate:  ${pct(r.falsePositiveRate)}   <-- the demo nu
 console.log(`kind accuracy:        ${pct(r.kindAccuracy)}   (request vs commitment)`);
 console.log(`confusion: tp=${r.tp} fp=${r.fp} tn=${r.tn} fn=${r.fn}`);
 if (r.mistakes.length) {
-  console.log("\nmistakes to fix:");
+  console.log("\nwhere this extractor is wrong:");
   for (const m of r.mistakes) console.log("  " + m);
 }

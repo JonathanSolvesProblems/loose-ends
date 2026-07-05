@@ -1,13 +1,28 @@
 {
   "name": "loose-ends",
-  "version": "0.1.0",
-  "description": "A Slack agent that catches dropped commitments before they cause harm.",
+  "version": "0.2.0",
+  "description": "A Slack agent that catches unowned requests and dropped commitments before they cause harm.",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "build": "tsc",
-    "dev": "node --experimental-strip-types src/index.ts",
-    "eval": "node --experimental-strip-types eval/evaluate.ts",
-    "test": "node --test"
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit",
+    "start": "node --experimental-strip-types --env-file-if-exists=.env src/slack/app.ts",
+    "dev": "node --experimental-strip-types --env-file-if-exists=.env src/index.ts",
+    "eval": "node --experimental-strip-types --env-file-if-exists=.env eval/evaluate.ts",
+    "eval:llm": "node --experimental-strip-types --env-file-if-exists=.env eval/evaluate.ts --llm",
+    "test": "node --experimental-strip-types --test test/ledger.test.ts test/dates.test.ts test/extractor.test.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
+    "@slack/bolt": "^4.4.0",
+    "@slack/web-api": "^7.11.0",
+    "openai": "^4.104.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
   },
   "license": "MIT"
 }

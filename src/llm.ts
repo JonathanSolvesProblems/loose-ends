@@ -1,0 +1,199 @@
+// The AI judgment layer: real model calls, not a stub.
+//
+// "Slack AI" for developers is bring-your-own-model, so this calls an LLM with a
+// strict JSON schema (structured outputs). Two jobs:
+//
+//   1. classify()  - is this message an actionable open loop, and if so is it a
+//      REQUEST (no owner yet) or a COMMITMENT (owner = author)? This is the
+//      nuanced judgment a regex cannot make and where the AI earns its place.
+//   2. confirmsFulfillment() - given an open loop and a later message, did the
+//      work actually land? This is the moat: evidence-based verification, not a
+//      timer. "Closed" is not "done".
+//
+// Provider-agnostic by design: OpenAI (default when OPENAI_API_KEY / a local
+// OpenAI-compatible endpoint is set) or Anthropic. The challenge requires no
+// specific vendor. Structured outputs guarantee the model returns exactly the
+// shape we parse, so there is no brittle prompt-scraping.
+
+import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
+import type { LlmSettings } from "./config.ts";
+
+/** What the model returns for a single message. Empty strings mean "none". */
+export interface Classification {
+  kind: "request" | "commitment" | "none";
+  /** Short imperative summary, e.g. "follow up with the Diaz family". */
+  summary: string;
+  /** A named owner if one is explicit in the text; "" for an unowned request. */
+  owner: string;
+  /** Raw deadline phrase ("by Friday", "EOD"); "" if none. Grounded downstream. */
+  dueText: string;
+  /** 0..1 confidence this is a real, actionable open loop. */
+  confidence: number;
+}
+
+export interface Fulfillment {
+  fulfilled: boolean;
+  confidence: number;
+}
+
+export interface LlmClassifier {
+  classify(text: string, authorName: string): Promise<Classification>;
+  confirmsFulfillment(loopSummary: string, candidateText: string): Promise<Fulfillment>;
+}
+
+const CLASSIFY_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    kind: { type: "string", enum: ["request", "commitment", "none"] },
+    summary: { type: "string" },
+    owner: { type: "string" },
+    dueText: { type: "string" },
+    confidence: { type: "number" },
+  },
+  required: ["kind", "summary", "owner", "dueText", "confidence"],
+} as const;
+
+const FULFILLMENT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    fulfilled: { type: "boolean" },
+    confidence: { type: "number" },
+  },
+  required: ["fulfilled", "confidence"],
+} as const;
+
+const CLASSIFY_SYSTEM = [
+  "You extract actionable open loops from a single Slack message in a mission-driven workspace (nonprofit, mutual-aid, community health).",
+  "An open loop is either:",
+  '  - "request": someone asks for a specific thing to be done and no owner is yet committed ("can someone follow up with the Diaz family?", "this case needs a call before Monday", "the Diaz family still hasn\'t heard back").',
+  '  - "commitment": the author promises to do a specific thing themselves ("I\'ll file the report by Friday", "on it, sending now", "I\'ve got the intake call").',
+  '  - "none": social filler, status updates, questions for information, praise, or anything already done ("we should grab lunch", "I\'ll think about it", "deploy is green", "thanks everyone", "already handled that").',
+  "Judge intent, not keywords. A message can be a request without the word 'request', and a commitment without 'I'll'.",
+  'The concrete thing to be done must be nameable from THIS message alone. A bare acknowledgement that names no task ("on it", "will do", "got it", "sounds good") is "none", even though it sounds committal.',
+  'Set owner to a person\'s name/handle ONLY if the text explicitly names who will do it; otherwise "". For a commitment the owner is the author, so leave owner "" (the app fills it in).',
+  'Set dueText to the raw deadline phrase if present ("by Friday", "EOD", "tomorrow"), else "".',
+  "summary: a short imperative naming the concrete thing. confidence: 0..1 that this is a real, actionable open loop worth tracking.",
+].join("\n");
+
+const FULFILLMENT_SYSTEM = [
+  "You verify whether an open loop in a Slack workspace has actually been fulfilled by a later message.",
+  "Given the open loop and a candidate later message, decide if the candidate is concrete EVIDENCE the work happened",
+  '(e.g. "closed out the Diaz housing case", "report sent to the funder", "called them, all set", a link to the deliverable).',
+  "A restatement, a new promise, a question, or unrelated chatter is NOT evidence.",
+  "Be conservative: only fulfilled=true when the message genuinely shows the work landed. confidence is 0..1.",
+].join("\n");
+
+// --- Shared response shaping (both providers return the same JSON shape) -------
+
+function clamp01(n: number): number {
+  return Math.max(0, Math.min(1, n));
+}
+
+function shapeClassification(raw: unknown): Classification {
+  const c = raw as Partial<Classification> | null;
+  if (!c || typeof c.summary !== "string" || typeof c.confidence !== "number") {
+    return { kind: "none", summary: "", owner: "", dueText: "", confidence: 0 };
+  }
+  return {
+    kind: c.kind === "request" || c.kind === "commitment" ? c.kind : "none",
+    summary: c.summary,
+    owner: typeof c.owner === "string" ? c.owner : "",
+    dueText: typeof c.dueText === "string" ? c.dueText : "",
+    confidence: clamp01(c.confidence),
+  };
+}
+
+function shapeFulfillment(raw: unknown): Fulfillment {
+  const f = raw as Partial<Fulfillment> | null;
+  if (!f || typeof f.fulfilled !== "boolean") return { fulfilled: false, confidence: 0 };
+  return { fulfilled: f.fulfilled, confidence: clamp01(typeof f.confidence === "number" ? f.confidence : 0) };
+}
+
+function classifyUser(text: string, authorName: string): string {
+  return `Author: ${authorName}\nMessage: ${JSON.stringify(text)}`;
+}
+
+function fulfillmentUser(loopSummary: string, candidateText: string): string {
+  return `Open loop: ${JSON.stringify(loopSummary)}\nCandidate later message: ${JSON.stringify(candidateText)}`;
+}
+
+// --- OpenAI-backed (default) --------------------------------------------------
+
+export class OpenAiLlm implements LlmClassifier {
+  private readonly client: OpenAI;
+  private readonly model: string;
+  constructor(apiKey: string, model = "gpt-4o-mini", baseURL?: string) {
+    this.client = new OpenAI({ apiKey, baseURL });
+    this.model = model;
+  }
+
+  async classify(text: string, authorName: string): Promise<Classification> {
+    return shapeClassification(await this.call(CLASSIFY_SYSTEM, classifyUser(text, authorName), "classification", CLASSIFY_SCHEMA));
+  }
+
+  async confirmsFulfillment(loopSummary: string, candidateText: string): Promise<Fulfillment> {
+    return shapeFulfillment(await this.call(FULFILLMENT_SYSTEM, fulfillmentUser(loopSummary, candidateText), "fulfillment", FULFILLMENT_SCHEMA));
+  }
+
+  private async call(system: string, user: string, name: string, schema: unknown): Promise<unknown> {
+    try {
+      const res = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+        response_format: { type: "json_schema", json_schema: { name, strict: true, schema } },
+      } as unknown as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming);
+      const content = res.choices[0]?.message?.content;
+      return content ? JSON.parse(content) : null;
+    } catch {
+      return null; // a model error must never crash the agent loop
+    }
+  }
+}
+
+// --- Anthropic-backed (Claude) ------------------------------------------------
+
+export class AnthropicLlm implements LlmClassifier {
+  private readonly client: Anthropic;
+  private readonly model: string;
+  constructor(apiKey: string, model = "claude-haiku-4-5") {
+    this.client = new Anthropic({ apiKey });
+    this.model = model;
+  }
+
+  async classify(text: string, authorName: string): Promise<Classification> {
+    return shapeClassification(await this.call(CLASSIFY_SYSTEM, classifyUser(text, authorName), CLASSIFY_SCHEMA, 400));
+  }
+
+  async confirmsFulfillment(loopSummary: string, candidateText: string): Promise<Fulfillment> {
+    return shapeFulfillment(await this.call(FULFILLMENT_SYSTEM, fulfillmentUser(loopSummary, candidateText), FULFILLMENT_SCHEMA, 120));
+  }
+
+  private async call(system: string, user: string, schema: unknown, maxTokens: number): Promise<unknown> {
+    try {
+      const res = await this.client.messages.create({
+        model: this.model,
+        max_tokens: maxTokens,
+        system,
+        messages: [{ role: "user", content: user }],
+        output_config: { format: { type: "json_schema", schema } },
+      } as unknown as Anthropic.MessageCreateParamsNonStreaming);
+      const block = res.content.find((b): b is Anthropic.TextBlock => b.type === "text");
+      return block ? JSON.parse(block.text) : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
+/** Build the classifier the config selected. */
+export function createLlm(settings: LlmSettings): LlmClassifier {
+  return settings.provider === "openai"
+    ? new OpenAiLlm(settings.apiKey, settings.model, settings.baseURL)
+    : new AnthropicLlm(settings.apiKey, settings.model);
+}
