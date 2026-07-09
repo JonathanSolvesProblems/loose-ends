@@ -1,142 +1,172 @@
-# Loose Ends — Devpost submission
+# Loose Ends: Devpost submission copy
 
-> Paste-ready copy for the Devpost form. Fill the three `⟨…⟩` placeholders once
-> you've run the live agent and `npm run eval:llm`.
+> Read this out loud before you paste it. Change any sentence that does not sound
+> like you. Judges read hundreds of these and can tell when a person wrote it.
+> The only field I cannot write for you is the first line of **Inspiration**.
+> Fill the `⟨…⟩` slots, delete this box, then paste.
+
+**Track:** Slack Agent for Good
+**Name:** Loose Ends
 
 ---
 
 ## Elevator pitch (one line)
 
-**Loose Ends catches asks in Slack that nobody accepted, and only marks them done
-once it finds evidence the work actually happened.**
-
-## Tagline / category
-
-Slack Agent for Good — nonprofit operations & frontline mission teams.
-It's like a helpdesk unassigned-ticket queue, but for the ordinary conversation
-of a mission-driven team, and it verifies the fix instead of trusting a timer.
+Loose Ends catches asks in Slack that nobody accepted, and refuses to mark them
+done until it finds evidence the work actually happened.
 
 ---
 
 ## Inspiration
 
-In a nonprofit, mutual-aid, or community-health Slack, an unanswered "can someone
-follow up with the Diaz family?" is not a slipped deck. It is a person not
-served. The message scrolls away, everyone assumes someone else has it, and
-nobody does.
+⟨One or two sentences, in your own words, about the specific moment or person that
+made you build this. If there isn't one, say plainly why the problem bothers you.
+Do not invent a story.⟩
 
-The number that made me build this: in a study of 115,316 social-services
-referrals across a 26-county network, **even when a referral was logged and
-marked "closed," only 38% of clients actually received the service** — down from
-65% in an earlier period (JAMA Network Open, 2024). The loop *looked* closed. The
-person wasn't served. That gap — between "closed" and "done" — is the whole
-problem, and nothing on the market watches for it.
+The number that convinced me this was worth building: in a study of 115,316
+social-services referrals across 26 counties, even when a referral was logged and
+marked "closed," only 38% of clients actually received the service. That is down
+from 65% in an earlier period (JAMA Network Open, 2024).
+
+The loop looked closed. The person was never served.
+
+Every commitment bot I found treats a passing deadline, or a clicked button, as
+proof that work happened. None of them check. In a nonprofit or a mutual-aid
+Slack, that gap is not a slipped deck. It is a family that never got a callback.
 
 ## What it does
 
-Loose Ends watches opted-in channels for **open loops** — work that was asked for
-or promised — and runs each through a deterministic ownership-and-fulfillment
-state machine:
+Loose Ends watches the channels you invite it to and tracks "open loops," which
+is work that was either asked for or promised.
 
-- **Detects unowned requests.** The un-cloned case: an ask nobody accepted
-  ("can someone confirm Mr. Okafor's clinic appointment?"), which is different
-  from a personal commitment someone forgot. Every existing commitment bot only
-  catches the second kind.
-- **Escalates to a backup human.** If the response window passes with no owner, it
-  routes a calm "nobody has picked this up" card to a pre-designated coordinator.
-  One tap claims it.
-- **Verifies fulfillment on evidence, not a timer.** This is the flagship. When a
-  later message proves the work landed ("closed out the Diaz housing case"), the
-  card flips to **Verified**. When a deadline passes with *no* such evidence, the
-  loop stays **open**, then BROKEN — because closed is not done.
-- **Stays silent on noise.** "we should grab lunch," "I'll think about it" never
-  enter the ledger. Restraint is the UX.
+It does three things nothing else does together:
+
+1. **It finds unowned requests.** "Can someone follow up with the Diaz family?" is
+   an ask nobody accepted. That is a different failure from a personal promise
+   someone forgot, and it is the one that drops silently. Every commitment bot I
+   looked at only catches the second kind.
+2. **It escalates to a real person.** If nobody claims an ask inside the response
+   window, it routes a calm card to a designated backup coordinator. One tap
+   claims it.
+3. **It only closes a loop on evidence.** When someone later posts "closed out the
+   Diaz housing case," Loose Ends finds that message and marks the loop verified.
+   When a deadline passes with no such message, the loop stays open, then breaks.
+   Closed is not done.
+
+It also stays quiet. "We should grab lunch" and "I'll think about it" never enter
+the ledger. That silence is the point.
 
 ## How I built it
 
-Three eligible technologies, each load-bearing, on top of a deterministic spine:
+The design changed once I read the docs properly.
 
-- **Slack AI (bring-your-own-model).** A real LLM call — OpenAI's `gpt-4o-mini` in
-  this build (the layer is provider-swappable to Claude) — does the
-  request-vs-commitment judgment (owner, deadline, confidence) as strict JSON
-  (structured outputs). A cheap deterministic noise filter runs in front to
-  guarantee silence and cut tokens.
-- **Real-Time Search API.** An on-demand `assistant.search.context` lookup:
-  @-mention the agent and ask "what's still open here?" (RTS is a pull/query API
-  that needs an ephemeral action_token — so it's used for exactly that, not as a
-  scanner.)
-- **Events API + Block Kit.** The `message.channels` push stream is the real-time
-  ingestion (RTS can't scan channels); Block Kit cards with wired `block_actions`
-  are the one-tap review gate; governed write-back goes through the Web API.
-- **The deterministic ledger.** Every status decision — ownership, escalation
-  timers, break, dedupe — is a pure, reproducible, fully-audited state machine,
-  independent of what the model said. That is what makes the escalation
-  trustworthy and separates this from a prompt-only clone.
+- **Ingestion is the Events API**, not the Real-Time Search API. RTS is a
+  pull-only query API whose bot calls need an ephemeral `action_token`, so it
+  cannot passively watch a channel. `message.channels` can, and it is not
+  throttled.
+- **The judgment is an AI call.** Every candidate message goes to `gpt-4o-mini`
+  with a strict JSON schema, which returns request vs commitment, the owner, the
+  deadline, and a confidence. A cheap deterministic filter runs in front so
+  obvious chatter never costs a token and the agent is guaranteed to stay silent.
+- **The spine is a deterministic state machine.** Ownership, SLA timers,
+  escalation, dedupe, and the full audit trail are pure functions. Nothing about
+  a loop's status depends on what the model felt like saying. That is what makes
+  an escalation something a coordinator can trust.
+- **The Real-Time Search API does the thing only it can do.** Mention the agent
+  and say "scan this channel" and it searches the channel's past for asks that
+  were dropped before it was ever installed. `conversations.history` is throttled
+  to one request per minute for non-Marketplace apps, so there is no other way to
+  do this. Slack's RTS terms say you must not store retrieved data, so the scan is
+  strictly a read-only briefing: it classifies in memory, reports with permalinks,
+  and writes nothing to the ledger.
+- **The surface is Block Kit.** Interactive Claim / Mark done / Snooze / Dismiss
+  cards, an eyes reaction while the model thinks, a check reaction on the message
+  that served as proof, deadlines rendered in each viewer's own timezone, and
+  mentions that actually notify the person who has to act.
 
-Stack: TypeScript, Bolt (Socket Mode), the OpenAI SDK (swappable to
-`@anthropic-ai/sdk`), node:test. ~1,000 lines, 22 unit tests, and an evaluation
-harness.
-
-## Accomplishments I'm proud of
-
-- **A real, measured false-positive story, not a vanity number.** A regex clone of
-  "detect a promise" tops out at **52% recall and a 17.4% false-positive rate** on
-  a 48-message frontline corpus deliberately built to include the phrasings a
-  keyword filter can't see. The LLM extractor (OpenAI `gpt-4o-mini`) takes that to
-  **100% recall, 92.6% precision, an 8.7% false-positive rate, and 100% accuracy
-  on the request-vs-commitment split** — recall doubled, false positives halved.
-  That delta is the proof the AI is load-bearing, not bolted on.
-- **The one capability nobody else has:** evidence-based fulfillment verification.
-- **Everything is real** — live Events ingestion, real classification, real
-  Block Kit gate, real evidence detection — with the deterministic core fully
-  unit-tested.
+Stack: TypeScript, Bolt on Socket Mode, the OpenAI SDK, `node:test`.
 
 ## Challenges I ran into
 
-- **RTS is not a channel watcher.** My first design assumed RTS could passively
-  scan channels. It can't: it's pull-only, its bot calls need an ephemeral
-  action_token that only arrives on @-mention/DM, and it forbids storing results.
-  I re-based ingestion on the Events API push stream and gave RTS its honest job
-  as the on-demand lookup — a correction that made the whole design survive
-  contact with the real APIs.
-- **The Slack MCP server has no Lists/task tool** (message + canvas only), so
-  governed write-back uses the Web API directly.
-- **"Slack AI" is bring-your-own-model** — there's no hosted LLM for developers
-  and the challenge requires no specific vendor — so the extractor calls your
-  model (OpenAI here) with your key.
+**RTS is not what I assumed.** My first architecture had RTS passively watching
+channels. It cannot: it is pull-only, its bot calls need a token that only arrives
+on a mention or DM, and it forbids storing results. I rebuilt ingestion on the
+Events API and gave RTS the job it is actually good at.
+
+**I then built an RTS feature that broke Slack's terms.** My channel scan seeded
+the ledger from search results. Slack's docs say plainly, "You must not store or
+copy any of the data retrieved from this API." I tore that out and made the scan a
+transient, read-only briefing. It is a better feature for it, and it is honest.
+
+**The ledger contradicted my own thesis.** An unclaimed request with a deadline
+next week was being marked "dropped" after the escalation window, before the
+deadline had even arrived. My entire pitch is that broken means "the deadline
+passed with no evidence." I fixed the state machine and wrote a regression test
+named after the bug.
+
+**Deadlines were being resolved in the server's timezone.** Someone writing "by
+2am" meant 2am where they were sitting. The agent now reads each author's Slack
+timezone and grounds the deadline in their day.
+
+## Accomplishments I'm proud of
+
+I have a measured number instead of a vanity one.
+
+I built a 48-message corpus of real frontline phrasing, including implied asks a
+keyword filter cannot see ("the Diaz family still hasn't heard back") and traps it
+false-fires on ("I'll be out Friday"). On that corpus:
+
+| Extractor | Precision | Recall | False positives |
+| --- | --- | --- | --- |
+| Regex clone | 76.5% | 52.0% | 17.4% |
+| AI extractor (`gpt-4o-mini`) | **92.6%** | **100%** | **8.7%** |
+
+The AI doubles recall and halves false positives. That is the argument for it
+being load-bearing rather than decorative. A weekend keyword bot tops out at the
+first row.
+
+25 unit tests, a clean type-check, and the whole thing live-tested in a sandbox.
 
 ## What I learned
 
-Determinism is the feature. The reliable, auditable part of an agent is the state
-machine; the model's job is narrow judgment over messy text. Keeping the two
-strictly separated is what makes the escalation something a frontline coordinator
-could actually trust with a family's case.
+Determinism is the feature. The trustworthy part of an agent is the state machine.
+The model's job is narrow judgment over messy text. Keeping those two strictly
+separated is what lets a frontline coordinator trust an escalation with a family's
+case.
 
-## Impact (Slack Agent for Good)
+I also learned to read the platform's terms before designing around a capability,
+not after.
 
-Dropped follow-ups and missed handoffs are one of the top categories of waste in
-health and social care ($25–45B/year; Berwick & Hackbarth, JAMA 2012), and ~80%
-of serious medical errors involve miscommunication at a handoff (Joint
-Commission). Loose Ends targets that failure directly in the tool frontline teams
-already live in, with a quantifiable benefit: fewer unowned asks silently
-dropped, and — uniquely — a check that "closed" loops were actually served.
-⟨pilot line: "In a ⟨N⟩-person pilot workspace over ⟨X⟩ days, Loose Ends caught
-⟨Y⟩ unowned asks, escalated ⟨Z⟩, and flagged ⟨W⟩ loops closed without evidence."⟩
+## Impact
+
+Dropped handoffs and follow-ups are one of the largest categories of waste in
+health and social care: $25 to $45 billion a year (Berwick and Hackbarth, JAMA
+2012), and roughly 80% of serious medical errors involve miscommunication at a
+handoff (Joint Commission).
+
+Loose Ends attacks that inside the tool frontline teams already live in, and it
+targets the specific failure nobody else does: a loop that looks closed but was
+never actually served. For a small nonprofit with no operations layer, the cost of
+a dropped ask is not a missed deliverable. It is a person.
+
+⟨If you run the pilot: "In a ⟨N⟩-person workspace over ⟨X⟩ days, Loose Ends caught
+⟨Y⟩ unowned asks, escalated ⟨Z⟩, and flagged ⟨W⟩ loops that hit their deadline with
+no evidence of completion."⟩
 
 ## What's next
 
-Per-workspace tuning of the SLA/escalation timers, a dismissal-feedback loop that
-retrains the filter, a prospective precision/recall study against a gold-standard
-labeled set, and Slack Marketplace review for admin controls and data residency.
+Per-workspace tuning of the escalation windows, a feedback loop so dismissals
+retrain the filter, a durable store so the ledger survives a restart, and a
+prospective accuracy study against a labeled gold standard.
 
 ## Built with
 
-`typescript` · `slack-bolt` · `slack-events-api` · `slack-real-time-search-api` ·
-`slack-block-kit` · `openai` · `node`
+`typescript` `slack-bolt` `slack-events-api` `slack-real-time-search-api`
+`slack-block-kit` `openai` `node`
 
 ## Links
 
-- Demo video: ⟨URL⟩
-- Sandbox URL (access granted to slackhack@salesforce.com & testing@devpost.com): ⟨URL⟩
-- Architecture diagram: `docs/architecture.svg`
-- Repo: ⟨URL⟩
+- Demo video: ⟨public YouTube URL⟩
+- Slack sandbox (Member access granted to slackhack@salesforce.com and testing@devpost.com): ⟨URL⟩
+- Code: https://github.com/JonathanSolvesProblems/loose-ends
+- Architecture diagram: uploaded to the submission form's file field

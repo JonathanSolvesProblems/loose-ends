@@ -105,8 +105,15 @@ export class Ledger {
         return loop.dueAt != null && now >= loop.dueAt ? "DUE" : null;
       case "DUE":
         return loop.dueAt != null && now >= loop.dueAt + this.cfg.graceMs ? "ESCALATED" : null;
-      case "ESCALATED":
-        return loop.escalatedAt != null && now >= loop.escalatedAt + this.cfg.escalationGraceMs ? "BROKEN" : null;
+      case "ESCALATED": {
+        if (loop.escalatedAt == null) return null;
+        const graceOver = now >= loop.escalatedAt + this.cfg.escalationGraceMs;
+        // A loop is only "dropped" once its deadline has actually passed with no
+        // evidence. An unclaimed request whose deadline is still in the future is
+        // at risk, not broken: someone can still claim it and finish on time.
+        const deadlinePassed = loop.dueAt == null || now >= loop.dueAt;
+        return graceOver && deadlinePassed ? "BROKEN" : null;
+      }
       default:
         return null; // BROKEN, FULFILLED, DISMISSED are terminal w.r.t. the timer
     }

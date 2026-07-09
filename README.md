@@ -91,8 +91,13 @@ flowchart TD
   said.
 - **Evidence-based fulfillment** = the moat. Watches the same stream for a later
   message that proves the work landed, and only then closes the loop.
-- **RTS API** = an on-demand "what's still open here?" lookup when a coordinator
-  asks. Honest, in-bounds use of the eligible technology.
+- **RTS API** = retroactive discovery, and the one thing only it can do. Mention
+  the agent and say "scan this channel" and it searches the channel's past for
+  asks that were dropped *before the agent was ever installed*. There is no other
+  way to do this: `conversations.history` is throttled to 1 request/minute for
+  non-Marketplace apps. Slack's RTS terms forbid storing retrieved data, so the
+  scan is strictly a read-only briefing: it classifies in memory, reports with
+  permalinks, and writes nothing to the ledger.
 - **Block Kit + governed write-back** = the hands. Nothing is written to a system
   of record without an explicit approved action behind a human gate.
 

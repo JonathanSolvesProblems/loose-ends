@@ -27,6 +27,12 @@ export interface IncomingMessage extends MessageRef {
   text: string;
   /** Epoch ms. Passed in explicitly so the core never calls Date.now() itself. */
   observedAt: number;
+  /**
+   * The author's UTC offset in minutes, when known. "by 2am" means 2am in the
+   * timezone of the person who said it, not in UTC. Falls back to the workspace
+   * default when absent.
+   */
+  tzOffsetMinutes?: number;
 }
 
 /**

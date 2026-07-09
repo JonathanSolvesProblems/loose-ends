@@ -68,6 +68,33 @@ test("a commitment runs CLAIMED -> DUE -> ESCALATED, then BROKEN on a later tick
   assert.deepEqual(kinds, ["CLAIMED", "DUE", "ESCALATED", "BROKEN"]);
 });
 
+test("an escalated request is NOT dropped while its deadline is still in the future", () => {
+  // Real bug: "can someone call the shelter by 11pm?" posted at 4am escalated
+  // (nobody claimed it) and then went BROKEN at 4:30am — 18h before its deadline.
+  // BROKEN must mean "the deadline passed with no evidence", never "nobody
+  // claimed it fast enough".
+  const l = new Ledger(CFG);
+  const deadline = 10_000;
+  l.admit({ kind: "request", summary: "call the shelter", ownerId: null, dueAt: deadline, confidence: 0.9 }, src("1"), 0);
+
+  l.tick(1000); // response SLA passes -> escalate to the backup human
+  assert.equal(l.get("C1:1")?.status, "ESCALATED");
+
+  l.tick(5000); // escalation grace has passed, but the deadline has not
+  assert.equal(l.get("C1:1")?.status, "ESCALATED", "at risk, not dropped");
+
+  const changed = l.tick(deadline); // now the deadline passes with no evidence
+  assert.equal(changed[0].status, "BROKEN");
+});
+
+test("an escalated request with NO deadline still breaks on the escalation grace", () => {
+  const l = new Ledger(CFG);
+  l.admit(request(), src("1"), 0); // dueAt: null
+  l.tick(1000); // -> ESCALATED
+  const changed = l.tick(2001); // escalation grace passes; nothing to wait for
+  assert.equal(changed[0].status, "BROKEN");
+});
+
 test("fulfillment is terminal and beats the timer", () => {
   const l = new Ledger(CFG);
   l.admit(commitment(1000), src("1"), 0);

@@ -2,6 +2,12 @@
 // can be unit-tested without a workspace. The UX restraint of the product lives
 // here: calm, single-line cards with at most a few one-tap buttons, never a
 // wall of text and never a channel spam.
+//
+// Two rules learned from watching real cards land in a channel:
+//   1. Always say WHY the agent spoke up (the `reason` context line). A bot that
+//      appears without explaining itself reads as noise.
+//   2. Never make a human do date math. Render deadlines with Slack's native
+//      <!date^...> token so everyone sees it in their own timezone.
 
 import type { LoopCard, ReviewDecision } from "../actions.ts";
 
@@ -17,6 +23,14 @@ const ACTION_STYLE: Record<string, "primary" | "danger" | undefined> = {
   approve: "primary",
   snooze: undefined,
   dismiss: "danger",
+};
+
+const STATUS_EMOJI: Record<string, string> = {
+  UNOWNED: "🟡",
+  DUE: "🟡",
+  ESCALATED: "🔴",
+  BROKEN: "🔴",
+  FULFILLED: "✅",
 };
 
 export interface RenderedMessage {
@@ -42,21 +56,31 @@ export function decodeAction(value: string): { loopId: string; kind: ReviewDecis
   return null;
 }
 
-const EMOJI: Record<string, string> = {
-  "Nobody has picked this up": "🔴",
-  "This needs an owner": "🟡",
-  "This looks dropped": "🔴",
-  "Heads up, this is due": "🟡",
-};
+/** Slack renders this in each viewer's own timezone. Never hand-format a date. */
+export function slackDate(ms: number): string {
+  const secs = Math.floor(ms / 1000);
+  const fallback = `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
+  return `<!date^${secs}^{date_short_pretty} at {time}|${fallback}>`;
+}
 
-/** Render an actionable card. */
-export function renderCard(card: LoopCard): RenderedMessage {
-  const emoji = EMOJI[card.headline] ?? "🟡";
+/**
+ * Render an actionable card. `mentionUserId` is the person who should actually
+ * act (the owner for a due nudge, the backup human for an escalation); putting
+ * the mention inside the blocks is what makes Slack notify them.
+ */
+export function renderCard(card: LoopCard, mentionUserId?: string): RenderedMessage {
+  const emoji = STATUS_EMOJI[card.status] ?? "🟡";
+  const mention = mentionUserId ? `<@${mentionUserId}> ` : "";
+
+  const lines = [`${emoji} ${mention}*${card.headline}*`, card.detail];
+  const facts: string[] = [];
+  if (card.ownerId) facts.push(`Owner: <@${card.ownerId}>`);
+  if (card.dueAt) facts.push(`Due ${slackDate(card.dueAt)}`);
+  if (facts.length) lines.push(facts.join("  ·  "));
+
   const blocks: unknown[] = [
-    {
-      type: "section",
-      text: { type: "mrkdwn", text: `${emoji} *${card.headline}*\n${card.detail}` },
-    },
+    { type: "section", text: { type: "mrkdwn", text: lines.join("\n") } },
+    { type: "context", elements: [{ type: "mrkdwn", text: card.reason }] },
     {
       type: "actions",
       block_id: `le_${card.loopId}`,
@@ -75,13 +99,15 @@ export function renderCard(card: LoopCard): RenderedMessage {
       elements: [{ type: "mrkdwn", text: `<${card.permalink}|Jump to the message>` }],
     });
   }
-  return { text: card.headline, blocks };
+  return { text: `${card.headline} — ${card.detail}`, blocks };
 }
 
-/** Render the terminal state after a reviewer acts (replaces the card's buttons). */
-export function renderResolved(headline: string, detail: string): RenderedMessage {
-  return {
-    text: headline,
-    blocks: [{ type: "section", text: { type: "mrkdwn", text: `*${headline}*\n${detail}` } }],
-  };
+/**
+ * Render the terminal state after a loop resolves (claimed / verified / broken).
+ * `note` is the small grey line that explains what the status actually means.
+ */
+export function renderResolved(headline: string, detail: string, note?: string): RenderedMessage {
+  const blocks: unknown[] = [{ type: "section", text: { type: "mrkdwn", text: `*${headline}*\n${detail}` } }];
+  if (note) blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: note }] });
+  return { text: `${headline} — ${detail}`, blocks };
 }

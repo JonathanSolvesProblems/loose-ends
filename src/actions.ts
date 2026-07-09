@@ -9,7 +9,7 @@
 //  - UNOWNED / ESCALATED loops -> a coordinator card asking someone to CLAIM it.
 //  - CLAIMED / DUE loops       -> a nudge to the owner.
 
-import type { Loop } from "./types.ts";
+import type { Loop, LoopStatus } from "./types.ts";
 
 /** A reviewer's decision on a proposed card. */
 export type ReviewDecision =
@@ -24,31 +24,49 @@ export interface LoopCard {
   audience: "owner" | "coordinator";
   headline: string;
   detail: string;
+  /** Why the agent spoke up. Rendered small, under the headline. Never make the
+   *  human guess what the bot noticed or why it is bothering them. */
+  reason: string;
+  ownerId: string | null;
+  dueAt: number | null;
+  status: LoopStatus;
   permalink?: string;
   /** The buttons offered. The UX restraint of the product lives here. */
   actions: Array<"claim" | "approve" | "snooze" | "dismiss">;
 }
 
 export function buildCard(loop: Loop): LoopCard {
-  const when = loop.dueAt ? new Date(loop.dueAt).toISOString().slice(0, 10) : "no deadline";
+  const base = {
+    loopId: loop.id,
+    ownerId: loop.ownerId,
+    dueAt: loop.dueAt,
+    status: loop.status,
+    permalink: loop.source.permalink,
+    detail: `"${loop.summary}"`,
+  };
   const needsOwner = loop.status === "UNOWNED" || (loop.status === "ESCALATED" && !loop.ownerId);
 
   if (needsOwner) {
+    const escalated = loop.status === "ESCALATED";
     return {
-      loopId: loop.id,
+      ...base,
       audience: "coordinator",
-      headline: loop.status === "ESCALATED" ? "Nobody has picked this up" : "This needs an owner",
-      detail: `"${loop.summary}"`,
-      permalink: loop.source.permalink,
+      headline: escalated ? "Nobody has picked this up" : "This needs an owner",
+      reason: escalated
+        ? "The response window passed and nobody claimed this. Escalating to a backup human so it doesn't get dropped."
+        : "Someone asked for this, but nobody has taken it yet.",
       actions: ["claim", "snooze", "dismiss"],
     };
   }
+
+  const escalated = loop.status === "ESCALATED";
   return {
-    loopId: loop.id,
-    audience: loop.status === "ESCALATED" ? "coordinator" : "owner",
-    headline: loop.status === "ESCALATED" ? "This looks dropped" : "Heads up, this is due",
-    detail: `"${loop.summary}" (${when})`,
-    permalink: loop.source.permalink,
+    ...base,
+    audience: escalated ? "coordinator" : "owner",
+    headline: escalated ? "Past due, and no proof it happened" : "This is coming due",
+    reason: escalated
+      ? "The deadline and grace period both passed, and I haven't seen a single message showing this work actually landed."
+      : "The deadline is here. Mark it done once the work is genuinely finished.",
     actions: ["approve", "snooze", "dismiss"],
   };
 }

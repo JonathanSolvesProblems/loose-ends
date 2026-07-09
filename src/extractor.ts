@@ -10,7 +10,7 @@
 //     (the demo and CI). It is NOT the moat and it deliberately misses subtle
 //     phrasing, which is exactly what the eval shows and what the LLM recovers.
 //   - LlmExtractor: the real one. A cheap deterministic NOISE filter drops
-//     obvious social filler (guaranteeing silence + saving tokens), then Claude
+//     obvious social filler (guaranteeing silence + saving tokens), then the model
 //     makes the request-vs-commitment judgment on everything else.
 
 import type { ExtractedLoop, IncomingMessage, LoopKind } from "./types.ts";
@@ -92,16 +92,16 @@ export class HeuristicExtractor implements Extractor {
       kind: pf.kind,
       summary: msg.text.trim().slice(0, 140),
       ownerId: pf.kind === "commitment" ? msg.userId : null,
-      dueAt: groundDeadline(msg.text, msg.observedAt, this.tzOffsetMinutes),
+      dueAt: groundDeadline(msg.text, msg.observedAt, msg.tzOffsetMinutes ?? this.tzOffsetMinutes),
       confidence: 0.7,
     };
   }
 }
 
 /**
- * The production extractor. Deterministic noise filter in front of a real Claude
+ * The production extractor. Deterministic noise filter in front of a real LLM
  * classification call. The noise filter guarantees the agent stays silent on
- * filler (and cuts token spend); Claude does the nuanced judgment the regexes
+ * filler (and cuts token spend); the model does the nuanced judgment the regexes
  * cannot: request vs commitment, on phrasings a keyword filter would miss.
  */
 export class LlmExtractor implements Extractor {
@@ -127,7 +127,7 @@ export class LlmExtractor implements Extractor {
       // A commitment is owned by its author; an open request has no owner yet.
       ownerId: c.kind === "commitment" ? msg.userId : null,
       summary: c.summary.trim().slice(0, 140) || msg.text.trim().slice(0, 140),
-      dueAt: groundDeadline(c.dueText || msg.text, msg.observedAt, this.tzOffsetMinutes),
+      dueAt: groundDeadline(c.dueText || msg.text, msg.observedAt, msg.tzOffsetMinutes ?? this.tzOffsetMinutes),
       confidence: c.confidence,
     };
   }

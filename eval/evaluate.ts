@@ -11,7 +11,7 @@
 //                         corpus deliberately includes implied asks it can't see
 //                         and "I'll be out Friday"-style traps it false-fires on,
 //                         so this number is honest, not a tautology.
-//   npm run eval:llm   -> LlmExtractor (real Claude). Needs ANTHROPIC_API_KEY.
+//   npm run eval:llm   -> LlmExtractor (real LLM). Needs OPENAI_API_KEY.
 //                         This is where the AI earns its place: it recovers the
 //                         phrasings the regex misses and rejects the traps.
 //

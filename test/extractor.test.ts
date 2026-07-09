@@ -72,6 +72,24 @@ test("LlmExtractor builds a loop from the classification and assigns ownership",
   assert.equal(com?.ownerId, "U_BOB");
 });
 
+test("a deadline is grounded in the author's timezone, not the server's", async () => {
+  // "by 2am" said by someone in US Eastern (UTC-4) must resolve to 2am THEIR time
+  // (06:00 UTC), not 2am UTC. This is the bug that rendered "Due Yesterday 10PM".
+  const anchor = Date.UTC(2023, 10, 14, 12, 0); // noon UTC
+  const eastern: IncomingMessage = {
+    channelId: "C1", ts: "1", userId: "U_A", text: "I'll file the report by 2am", observedAt: anchor, tzOffsetMinutes: -240,
+  };
+  const utc: IncomingMessage = { ...eastern, tzOffsetMinutes: 0 };
+
+  const ex = new HeuristicExtractor(0); // server default is UTC; the message wins
+  const easternDue = (await ex.extract(eastern))!.dueAt!;
+  const utcDue = (await ex.extract(utc))!.dueAt!;
+
+  assert.equal(new Date(easternDue).getUTCHours(), 6, "2am EDT is 06:00 UTC");
+  assert.equal(new Date(utcDue).getUTCHours(), 2, "2am UTC is 02:00 UTC");
+  assert.equal(easternDue - utcDue, 4 * 60 * 60 * 1000, "exactly the 4h offset");
+});
+
 test("LlmExtractor drops 'none' and low-confidence classifications", async () => {
   const none = new StubClassifier({ kind: "none", summary: "", owner: "", dueText: "", confidence: 0.9 });
   assert.equal(await new LlmExtractor(none).extract(msg("thanks team, great week")), null);

@@ -3,7 +3,7 @@
     "name": "Loose Ends",
     "description": "Catches unowned requests and dropped commitments before a person falls through the cracks.",
     "background_color": "#1b4332",
-    "long_description": "Loose Ends is a coverage-gap safety net for mission-driven Slack workspaces. It watches opted-in channels for open loops (work that was asked for or promised), tracks each through a deterministic ownership-and-fulfillment state machine, and escalates to a backup human before a request is silently lost. It uses Claude to classify request-vs-commitment, the Slack Real-Time Search API for an on-demand 'what's still open here?' lookup, and Block Kit cards for one-tap Claim / Done / Snooze / Dismiss."
+    "long_description": "Loose Ends is a coverage-gap safety net for mission-driven Slack workspaces. It watches opted-in channels for open loops (work that was asked for or promised), tracks each through a deterministic ownership-and-fulfillment state machine, and escalates to a backup human before a request is silently lost. It uses an AI model to classify request-vs-commitment, the Slack Real-Time Search API to surface work that was already dropped before the agent was installed, and Block Kit cards for one-tap Claim / Done / Snooze / Dismiss. Crucially, it only marks work done once it finds evidence in later conversation that the work actually happened."
   },
   "features": {
     "bot_user": {
@@ -37,6 +37,7 @@
         "commands",
         "im:history",
         "reactions:read",
+        "reactions:write",
         "search:read.public",
         "users:read"
       ]

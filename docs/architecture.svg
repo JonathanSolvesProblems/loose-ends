@@ -21,7 +21,7 @@
   </defs>
 
   <!-- Title -->
-  <text x="580" y="38" text-anchor="middle" fill="#1b4332" font-size="26" font-weight="700">Loose Ends — Architecture</text>
+  <text x="580" y="38" text-anchor="middle" fill="#1b4332" font-size="26" font-weight="700">Loose Ends: Architecture</text>
   <text x="580" y="62" text-anchor="middle" class="sub" font-size="14">Catches unowned asks in Slack; verifies the work landed on evidence, not a timer.</text>
 
   <!-- Central pipeline flow arrows -->
@@ -55,7 +55,7 @@
 
   <!-- S4 LLM (generative) -->
   <rect class="gen" x="380" y="324" width="360" height="56" rx="10"/>
-  <text x="560" y="349" text-anchor="middle" class="t">LLM — the judgment</text>
+  <text x="560" y="349" text-anchor="middle" class="t">LLM: the judgment</text>
   <text x="560" y="368" text-anchor="middle" class="sub">request vs commitment · owner · deadline</text>
 
   <!-- S5 Ledger (emphasized) -->
@@ -72,7 +72,7 @@
   <!-- S7 write-back -->
   <rect class="box" x="380" y="568" width="360" height="56" rx="10"/>
   <text x="560" y="593" text-anchor="middle" class="t">Governed write-back</text>
-  <text x="560" y="612" text-anchor="middle" class="sub">chat.postEphemeral / Slack List (behind the human gate)</text>
+  <text x="560" y="612" text-anchor="middle" class="sub">chat.postMessage / Slack List (behind the human gate)</text>
 
   <!-- Right callout: the moat (fulfillment) -->
   <rect class="side" x="792" y="392" width="336" height="80" rx="10"/>
@@ -89,13 +89,14 @@
   <!-- solid moat arrow: fulfillment closes the loop back into the ledger -->
   <path class="moat" d="M792,440 H744" marker-end="url(#arrowMoat)"/>
 
-  <!-- Right callout: RTS on-demand -->
-  <rect class="side" x="792" y="508" width="336" height="76" rx="10"/>
-  <text x="960" y="533" text-anchor="middle" class="t">RTS · assistant.search.context</text>
-  <text x="960" y="552" text-anchor="middle" class="sub">coordinator @-mention → action_token</text>
-  <text x="960" y="569" text-anchor="middle" class="sub">on-demand "what's still open here?"</text>
+  <!-- Right callout: RTS retroactive briefing (load-bearing, read-only) -->
+  <rect class="side" x="792" y="500" width="336" height="92" rx="10"/>
+  <text x="960" y="524" text-anchor="middle" class="t">RTS · assistant.search.context</text>
+  <text x="960" y="543" text-anchor="middle" class="sub">@-mention → ephemeral action_token</text>
+  <text x="960" y="560" text-anchor="middle" class="sub">finds work dropped BEFORE install</text>
+  <text x="960" y="579" text-anchor="middle" class="sub" font-weight="700" fill="#1b4332">read-only · nothing is stored</text>
 
-  <!-- ledger answers the RTS lookup -->
+  <!-- ledger is read to skip already-tracked loops; RTS results never write back -->
   <path class="flow" d="M740,455 H766 V546 H790" marker-end="url(#arrow)"/>
 
   <!-- Legend -->
@@ -103,6 +104,6 @@
   <rect x="60" y="666" width="16" height="16" rx="3" class="box"/>
   <text x="84" y="679" class="sub" font-size="13">Deterministic (auditable)</text>
   <rect x="250" y="666" width="16" height="16" rx="3" class="gen"/>
-  <text x="274" y="679" class="sub" font-size="13">Generative — LLM (OpenAI / Claude)</text>
+  <text x="274" y="679" class="sub" font-size="13">Generative: LLM (OpenAI)</text>
   <text x="1100" y="679" text-anchor="end" class="sub" font-size="13" font-weight="600" fill="#1b4332">Eligible tech: Slack AI · Real-Time Search · Events API + Block Kit</text>
 </svg>
