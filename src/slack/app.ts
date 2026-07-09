@@ -7,7 +7,8 @@
 //     -> deterministic ledger: ownership, SLA timers, escalation (the spine)
 //     -> chat.postMessage Block Kit cards, Claim/Done/Snooze/Dismiss (the hands)
 //     -> evidence-based fulfillment from the same stream (the moat)
-//   Plus an on-demand RTS "what's still open here?" lookup (eligible technology).
+//   Plus the qualifying technology: an on-demand RTS scan that surfaces work
+//   dropped BEFORE the agent was ever installed. Read-only; nothing is stored.
 //
 // Only this file (and llm.ts) touch the network. The ledger, extractor, dates,
 // and block rendering stay pure and are unit-tested without a workspace.
@@ -20,6 +21,7 @@ import { createLlm } from "../llm.ts";
 import { LlmExtractor, isSoftNoise } from "../extractor.ts";
 import { FulfillmentDetector } from "../fulfillment.ts";
 import { buildCard } from "../actions.ts";
+import { mapLimit } from "../limit.ts";
 import { ACTION_ID, decodeAction, renderCard, renderResolved } from "./blockkit.ts";
 import { searchContext } from "./rts.ts";
 import type { IncomingMessage, Loop, LoopStatus } from "../types.ts";
@@ -44,10 +46,23 @@ const app = new App({
 const cardRefs = new Map<string, { channel: string; ts: string }>();
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OPEN: LoopStatus[] = ["UNOWNED", "CLAIMED", "DUE", "ESCALATED"];
+/** Max simultaneous model requests triggered by one Slack message or one scan. */
+const MODEL_CONCURRENCY = 4;
 
 /** Unbuffered logger: stderr flushes synchronously, so activity shows live in logs. */
 function log(...args: unknown[]): void {
   console.error("[loose-ends]", ...args);
+}
+
+/**
+ * Message text in a frontline channel contains client names ("follow up with the
+ * Diaz family"). Writing that to container logs on a shared host would quietly
+ * contradict the privacy posture this project claims. So content is redacted
+ * unless explicitly opted in, which demo mode does so the video has readable logs.
+ */
+const LOG_CONTENT = cfg.demo || process.env.LOOSE_ENDS_LOG_CONTENT === "1";
+function preview(text: string): string {
+  return LOG_CONTENT ? JSON.stringify(text) : `<redacted, ${text.length} chars>`;
 }
 
 function watched(channelId: string): boolean {
@@ -147,21 +162,20 @@ async function detectFulfillment(client: WebClient, incoming: IncomingMessage, n
     .filter((l) => OPEN.includes(l.status));
   if (open.length === 0) return false;
 
-  // Check the loops concurrently. Serially awaiting one model round-trip per open
-  // loop left the eyes reaction sitting on the message for seconds in a busy
-  // channel. The gate inside means most of these resolve without a model call.
-  const results = await Promise.all(
-    open.map(async (loop) => ({
-      loop,
-      isEvidence: await fulfillment.isEvidenceOfFulfillment(loop.summary, incoming.text),
-    })),
-  );
+  // Check the loops concurrently but BOUNDED. Serial left the eyes reaction sitting
+  // on the message for seconds in a busy channel; unbounded would fire one model
+  // request per open loop at once and earn a 429. The gate inside means most of
+  // these resolve without a model call at all.
+  const results = await mapLimit(open, MODEL_CONCURRENCY, async (loop) => ({
+    loop,
+    isEvidence: await fulfillment.isEvidenceOfFulfillment(loop.summary, incoming.text),
+  }));
 
   let verified = false;
   for (const { loop, isEvidence } of results) {
     if (!isEvidence) continue;
     ledger.markFulfilled(loop.id, now, `evidence:${incoming.ts}`);
-    log(`  ✓ VERIFIED on evidence: "${loop.summary}"`);
+    log(`  ✓ VERIFIED on evidence: ${preview(loop.summary)}`);
     await resolveCard(
       client,
       loop.id,
@@ -201,7 +215,7 @@ app.message(async ({ message, client, context }) => {
     tzOffsetMinutes: await tzFor(c, m.user),
   };
 
-  log(`msg #${m.channel} <${m.user}>: ${JSON.stringify(m.text)}`);
+  log(`msg #${m.channel} <${m.user}>: ${preview(m.text)}`);
 
   // Obvious filler never costs a token and never gets a reaction: the agent is
   // simply silent. Anything else gets an immediate 👀 so the human knows it was
@@ -221,7 +235,7 @@ app.message(async ({ message, client, context }) => {
       return;
     }
     const loop = ledger.admit(extracted, incoming, now);
-    if (loop) log(`  → ${loop.kind} ${loop.status}: "${loop.summary}"`);
+    if (loop) log(`  → ${loop.kind} ${loop.status}: ${preview(loop.summary)}`);
     // Surface an unowned request immediately so the channel can claim it; owned
     // commitments stay silent until they come due.
     if (loop && loop.status === "UNOWNED") await upsertCard(c, loop);
@@ -362,22 +376,20 @@ async function scanChannel(
   // up with the Diaz family?" asked three times over a week). Report the WORK
   // once, and count how many times it was asked. "Asked 3 times, still nobody
   // claimed it" is a far stronger signal than three identical bullets.
-  // Classify concurrently. Twenty sequential model round-trips left the
-  // coordinator staring at "Searching..." for seconds.
-  const classified = await Promise.all(
-    candidates.map(async (h) => {
-      const incoming: IncomingMessage = {
-        channelId,
-        ts: h.ts,
-        userId: h.authorId!,
-        text: h.text, // transient: classified, then dropped. Never persisted.
-        observedAt: Number(h.ts) * 1000 || Date.now(),
-        permalink: h.permalink,
-        tzOffsetMinutes: await tzFor(client, h.authorId!),
-      };
-      return { hit: h, extracted: await extractor.extract(incoming) };
-    }),
-  );
+  // Classify with bounded concurrency. Twenty sequential model round-trips left the
+  // coordinator staring at "Searching..."; twenty at once would rate-limit.
+  const classified = await mapLimit(candidates, MODEL_CONCURRENCY, async (h) => {
+    const incoming: IncomingMessage = {
+      channelId,
+      ts: h.ts,
+      userId: h.authorId!,
+      text: h.text, // transient: classified, then dropped. Never persisted.
+      observedAt: Number(h.ts) * 1000 || Date.now(),
+      permalink: h.permalink,
+      tzOffsetMinutes: await tzFor(client, h.authorId!),
+    };
+    return { hit: h, extracted: await extractor.extract(incoming) };
+  });
 
   const byWork = new Map<string, ScanFinding>();
   for (const { hit: h, extracted } of classified) {
@@ -390,7 +402,7 @@ async function scanChannel(
       seen.permalink ??= h.permalink;
       continue;
     }
-    log(`  ⟲ RTS surfaced a dropped ${extracted.kind}: "${extracted.summary}"`);
+    log(`  ⟲ RTS surfaced a dropped ${extracted.kind}: ${preview(extracted.summary)}`);
     byWork.set(key, {
       kind: extracted.kind,
       summary: extracted.summary,
@@ -457,7 +469,7 @@ const tickMs = cfg.demo ? 5_000 : 60_000;
 setInterval(async () => {
   const now = Date.now();
   for (const loop of ledger.tick(now)) {
-    log(`tick → ${loop.status}: "${loop.summary}"`);
+    log(`tick → ${loop.status}: ${preview(loop.summary)}`);
     try {
       if (loop.status === "DUE" || loop.status === "ESCALATED") {
         await upsertCard(app.client as WebClient, loop);
