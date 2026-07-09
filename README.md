@@ -266,8 +266,17 @@ The offline demo tells the whole story in four beats:
 
 ## Honest limitations and path to production
 
-- Privacy: opted-in channels only; the ledger stores derived loop state, not raw
-  message archives; RTS results are never stored (per Slack's terms).
+- **Message content leaves the workspace.** Every message that survives the
+  deterministic noise filter is sent to a third-party model for classification.
+  For a real deployment in social services that is a non-starter without either a
+  business-associate agreement or a self-hosted model. This is why the model layer
+  is OpenAI-*compatible* rather than OpenAI-*only*: point `LOOSE_ENDS_LLM_BASE_URL`
+  at a local Ollama and no message ever leaves the building. I have not run the
+  eval against a local model, so I cannot yet quote its accuracy.
+- Privacy otherwise: opted-in channels only; the ledger stores derived loop state,
+  not raw message archives; RTS results are never stored (per Slack's terms).
+- The ledger is in memory. A restart or redeploy forgets every open loop. A durable
+  store is the first thing production needs.
 - Extraction and fulfillment recall are bounded by the model; a dismissal signal
   is captured to retrain the filter, but a production deployment needs a
   prospective precision/recall study against a gold-standard labeled set.
