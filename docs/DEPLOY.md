@@ -1,76 +1,94 @@
-# Deploying Loose Ends (optional)
+# Deploying Loose Ends
 
-## Do you need this?
+## Why this is now required
 
-For the **Slack Agent for Good** track: **no, hosting is not required.** The
-submission asks for a demo video, an architecture diagram, and your **Slack
-developer sandbox URL** — not a deployment URL. Judges evaluate mainly from the
-video.
+Judges test submissions asynchronously over a multi-week window. Loose Ends runs
+over Slack Socket Mode, which means the agent process must be alive for the bot to
+respond. If it only runs on your laptop, a judge opening your sandbox at 2am finds
+a dead bot. That is a silent way to lose.
 
-The one reason to deploy: so the bot is **live in your sandbox whenever a judge
-opens it**, instead of only while your laptop is running the process. If you're
-fine running `npm start` locally during the judging window, skip this entirely.
+The Devpost form does not ask for a deployment URL. Deploy anyway, so the sandbox
+you hand the judges is actually live.
 
-(Hosting a public server *is* required for the **Organizations** track — Marketplace
-deployment — but we deliberately targeted For Good, which doesn't need it.)
+## Why deployment is simple here
 
-## Why deployment is trivial here
+Socket Mode opens an **outbound** WebSocket to Slack. There is no inbound HTTP, so:
 
-Loose Ends uses **Socket Mode**: the agent opens an *outbound* WebSocket to Slack.
-There is **no inbound HTTP endpoint, no public URL, and no port to expose**. So you
-deploy it as a **background worker / long-running process**, not a web service. No
-domain, no TLS, no health-check port.
+- no public URL
+- no port to expose
+- no domain, no TLS, no health check
 
-## What to set on the host
+You are deploying a **background worker**, not a web service. Any platform that can
+keep a Node process running will do.
 
-The same values as `.env.example`, as platform environment variables:
+## Two rules that will bite you
+
+1. **Run exactly one instance.** Two instances each open their own Socket Mode
+   connection. Slack load-balances events across connections, so a Claim can land
+   in one process's in-memory ledger while the "closed out" message lands in the
+   other's, and verification silently never fires. This happened during
+   development. `render.yaml` pins `numInstances: 1`.
+2. **Kill your local agent once the deployed one is live.** Same reason. Running
+   `npm start` locally while the deploy is up recreates the split brain.
+
+Also note: the ledger is in memory, so a redeploy or restart forgets loops that
+are currently open. That is acceptable for judging and is listed as a known
+limitation in the README.
+
+## Option A: Render, from the dashboard (no CLI)
+
+The repo is public and ships a [`render.yaml`](../render.yaml) blueprint.
+
+1. Sign in at <https://dashboard.render.com>.
+2. **New** → **Blueprint** → connect `JonathanSolvesProblems/loose-ends`.
+3. Render reads `render.yaml`, sees a Docker `worker`, and prompts for the secrets.
+   Paste them from your local `.env`:
+
+   | Variable | Where it came from |
+   | --- | --- |
+   | `OPENAI_API_KEY` | platform.openai.com/api-keys |
+   | `SLACK_BOT_TOKEN` | app settings → OAuth & Permissions (`xoxb-…`) |
+   | `SLACK_APP_TOKEN` | app settings → Basic Information → App-Level Tokens (`xapp-…`) |
+   | `SLACK_SIGNING_SECRET` | app settings → Basic Information |
+   | `LOOSE_ENDS_COORDINATOR` | your Slack member ID (`U…`) |
+
+4. Deploy. Watch the logs for `⚡ Loose Ends is live (production timers)`.
+5. Stop your local agent.
+
+Background workers are a paid plan (a few dollars a month). For a submission that
+must stay reachable for weeks, that is the cost of not losing on a technicality.
+
+## Option B: Railway, from the dashboard
+
+1. <https://railway.app> → **New Project** → **Deploy from GitHub repo**.
+2. Pick `loose-ends`. Railway detects the `Dockerfile` automatically.
+3. Add the same variables under **Variables**.
+4. Confirm the service has **one** replica.
+
+Railway gives trial credit, then runs a few dollars a month.
+
+## Option C: Fly.io, if you prefer a CLI
+
+```bash
+fly launch --no-deploy          # say NO when asked to expose a public service
+fly secrets set OPENAI_API_KEY=... SLACK_BOT_TOKEN=... SLACK_APP_TOKEN=... \
+                SLACK_SIGNING_SECRET=... LOOSE_ENDS_COORDINATOR=...
+fly deploy
+fly scale count 1               # exactly one instance
+```
+
+## Never set this in production
 
 ```
-OPENAI_API_KEY          (or ANTHROPIC_API_KEY)
-LOOSE_ENDS_MODEL        (optional; defaults gpt-4o-mini / claude-haiku-4-5)
-SLACK_BOT_TOKEN
-SLACK_APP_TOKEN
-SLACK_SIGNING_SECRET
-LOOSE_ENDS_COORDINATOR
-LOOSE_ENDS_CHANNELS     (optional)
-LOOSE_ENDS_TZ_OFFSET    (optional)
+LOOSE_ENDS_DEMO=1
 ```
 
-Do **not** set `LOOSE_ENDS_DEMO=1` in the hosted instance — that's only for the
-video. Run production timers so escalations fire on real SLAs.
+That shrinks the escalation timers to roughly 15 seconds. It exists only so the
+demo video can show an escalation and a break on camera. In production the
+defaults are a 4 hour response window and 24 hour grace periods.
 
-## Options (easiest first)
+## Verify it is live
 
-### Railway
-1. `railway init` in the repo (or connect the GitHub repo in the dashboard).
-2. Add the env vars above under *Variables*.
-3. Railway detects the `Dockerfile` and runs `npm start`. Done — no port config,
-   it just stays connected.
-
-### Render (Background Worker)
-1. New → **Background Worker** (not Web Service — there's no port).
-2. Point it at the repo; it uses the `Dockerfile`. Or set:
-   - Build: `npm ci --omit=dev`
-   - Start: `npm start`
-3. Add the env vars. Deploy.
-
-### Fly.io
-1. `fly launch` (it detects the `Dockerfile`). When asked about a public service /
-   ports, say **no** — Socket Mode needs none.
-2. `fly secrets set OPENAI_API_KEY=... SLACK_BOT_TOKEN=... SLACK_APP_TOKEN=... SLACK_SIGNING_SECRET=... LOOSE_ENDS_COORDINATOR=...`
-3. `fly deploy`.
-
-### A small VM (systemd)
-`npm ci --omit=dev` then run `npm start` under a process manager (systemd,
-`pm2`, or `tmux`) with the env vars exported.
-
-## Verify it's live
-
-- The process logs `⚡ Loose Ends is live (...)` on start.
-- Post a test ask in a channel the bot is invited to; the claim card should appear.
-- `/looseends` in that channel returns the open-loop list.
-
-## Cost
-
-Idle most of the time; a hobby/free tier on any of the above is plenty for a
-demo/judging window. LLM calls are a few hundred tokens per message.
+- Logs show `⚡ Loose Ends is live (production timers), model=openai:gpt-4o-mini`.
+- Post an unowned ask in a channel the bot is in. A claim card should appear.
+- `@loose-ends scan this channel` returns a Real-Time Search briefing.

@@ -1,0 +1,54 @@
+# Render blueprint: deploy Loose Ends as a background worker.
+#
+# Loose Ends talks to Slack over Socket Mode, which is an OUTBOUND WebSocket. It
+# never receives inbound HTTP, so it is a `worker`, not a `web` service. There is
+# no port, no health check, and no domain to configure.
+#
+# numInstances is pinned to 1 on purpose. Two running instances would each open
+# their own Socket Mode connection; Slack load-balances events across connections,
+# so a claim would land in one process's in-memory ledger while the "closed out"
+# message landed in the other's. (This actually happened during development.)
+# Exactly one instance, always.
+#
+# Set every envVar below in the Render dashboard. `sync: false` means Render will
+# prompt for the value and store it as a secret instead of reading it from this
+# file, so no credential is ever committed.
+
+services:
+  - type: worker
+    name: loose-ends
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: oregon
+    numInstances: 1
+    autoDeploy: true
+    envVars:
+      # The AI judgment layer.
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: LOOSE_ENDS_MODEL
+        value: gpt-4o-mini
+
+      # Slack app credentials (api.slack.com/apps -> your app).
+      - key: SLACK_BOT_TOKEN
+        sync: false
+      - key: SLACK_APP_TOKEN
+        sync: false
+      - key: SLACK_SIGNING_SECRET
+        sync: false
+
+      # The backup human that unowned work escalates to.
+      - key: LOOSE_ENDS_COORDINATOR
+        sync: false
+
+      # Optional: restrict to specific channel IDs. Empty = every invited channel.
+      - key: LOOSE_ENDS_CHANNELS
+        value: ""
+
+      # Fallback only; the agent reads each author's real Slack timezone.
+      - key: LOOSE_ENDS_TZ_OFFSET
+        value: "0"
+
+      # IMPORTANT: never set LOOSE_ENDS_DEMO in production. It shrinks the
+      # escalation timers to ~15 seconds, which is only for the demo video.
