@@ -23,10 +23,14 @@ done until it finds evidence the work actually happened.
 made you build this. If there isn't one, say plainly why the problem bothers you.
 Do not invent a story.⟩
 
-The number that convinced me this was worth building: in a study of 115,316
-social-services referrals across 26 counties, even when a referral was logged and
-marked "closed," only 38% of clients actually received the service. That is down
-from 65% in an earlier period (JAMA Network Open, 2024).
+The number that convinced me this was worth building: across 83,365 managed cases
+drawn from 115,316 social-services referrals in 26 counties, even when a referral
+was logged and marked "closed," only 38% of clients actually received the service.
+That is down from 65% earlier (Johnson et al., JAMA Network Open, 2024).
+
+And the person who asked usually never finds out. In specialty care, 25 to 50% of
+referring physicians did not know whether their patient ever saw the specialist
+(Mehrotra et al., Milbank Quarterly, 2011).
 
 The loop looked closed. The person was never served.
 

@@ -44,10 +44,15 @@ served. The message scrolls away, everyone assumes someone else has it, and
 nobody does.
 
 > **Even when a social-services referral is logged and marked "closed," only 38%
-> of clients actually received the service** — down from 65% in an earlier period,
-> across 115,316 referrals in a 26-county network (JAMA Network Open, 2024). The
-> loop *looked* closed. The person wasn't served. That gap is exactly what
-> evidence-based verification is built to catch.
+> of clients actually received the service.** That is down from 65% earlier, across
+> 83,365 managed cases drawn from 115,316 referrals in 26 counties (Johnson et al.,
+> *JAMA Network Open*, 2024;7(4):e247021). The loop *looked* closed. The person was
+> never served. That gap is exactly what evidence-based verification is built to
+> catch.
+>
+> And the person who asked usually never finds out: **25 to 50% of referring
+> physicians did not know whether their patient ever saw the specialist**
+> (Mehrotra et al., *Milbank Quarterly*, 2011).
 
 ## How this differs from what already exists
 
@@ -306,34 +311,43 @@ The offline demo tells the whole story in four beats:
 
 ## References
 
-1. Measures of Referral vs Receipt of Social Services Among Patients With
-   Health-Related Social Needs. *JAMA Network Open*, 2024 (NCCARE360 / Unite Us,
-   Duke Health) — closed-loop referrals where only 38% of clients received the
-   service.
+Every figure below was checked against the primary source. Where a commonly-quoted
+version of a statistic turned out to be wrong, the accurate one is used instead.
+
+1. Johnson FS, McPeek Hinz ER, Regan D, Nohria R, Moon G, Spratt SE. Measures of
+   Referral vs Receipt of Social Services Among Patients With Health-Related
+   Social Needs. *JAMA Network Open*. 2024;7(4):e247021. Across 115,316 social
+   referrals in 26 counties (83,365 managed cases), the successful connection rate
+   fell from 65% to 38%. A referral marked closed is not a service received.
 2. Berwick DM, Hackbarth AD. Eliminating Waste in US Health Care. *JAMA*
-   2012;307(14):1513-1516 — care-coordination failures = $25-45B/year of waste.
-3. Joint Commission Center for Transforming Healthcare, Hand-off Communications
-   (Sentinel Event Alert 58) — ~80% of serious medical errors involve
-   miscommunication at handoffs.
+   2012;307(14):1513-1516. Failures of care coordination waste $25-45B/year.
+3. Joint Commission Center for Transforming Healthcare (2012), Hand-off
+   Communications Targeted Solutions Tool. An *estimated* 80% of serious medical
+   errors involve miscommunication between caregivers during hand-offs.
 4. CRICO Strategies, 2015 National CBS Report (Harvard Risk Management
-   Foundation) — communication failures a factor in 30% of 23,000 malpractice
-   cases; 1,744 deaths; $1.7B over 2009-2013.
-5. AHRQ HCUP Statistical Brief #278, 2021 — $15,200 average cost per 30-day
-   adult hospital readmission.
+   Foundation). Communication failures contributed to 7,149 of ~23,000 malpractice
+   cases (30%), including 1,744 deaths and $1.7B in costs, 2009-2013.
+5. AHRQ HCUP Statistical Brief #278, July 2021 (2018 Nationwide Readmissions
+   Database). Average cost of a 30-day adult readmission: $15,200.
 6. Mehrotra A, Forrest CB, Lin CY. Dropping the Baton: Specialty Referrals in the
-   United States. *Milbank Quarterly*, 2011 — 30-50% of specialty referrals are
-   never completed.
-7. Chung DT et al. Suicide Rates After Discharge From Psychiatric Facilities.
-   *JAMA Psychiatry*, 2017 — 1,132 suicides per 100,000 person-years in the first
-   3 months after discharge when follow-up is missed.
-8. Averted Missed Appointments Following Telemedicine Adoption at a Large FQHC,
-   2022 (PMC9520140) — $45,578/month in averted missed-appointment revenue at a
-   safety-net clinic network.
-9. Independent Sector, Value of Volunteer Time, 2024 — a volunteer hour valued at
-   ~$34, the labor a coordination failure wastes in mutual-aid orgs.
-10. Child Welfare League of America caseload standards; Casey Family Programs,
-    Turnover Costs and Retention Strategies — actual caseloads of 24-31 children
-    vs a recommended maximum of 12-15, driving dropped follow-ups.
+   United States. *Milbank Quarterly*. 2011;89(1):39-68. **25 to 50% of referring
+   physicians did not know whether their patient ever saw the specialist.** The
+   person who asked never learns whether the work happened, which is the exact gap
+   this project exists to close.
+7. Chung DT, Ryan CJ, Hadzi-Pavlovic D, et al. Suicide Rates After Discharge From
+   Psychiatric Facilities. *JAMA Psychiatry*. 2017. Pooled rate of 1,132 suicides
+   per 100,000 person-years within 3 months of discharge.
+8. Adepoju OE, Angelocci T, Matuk-Villazon O. Increased Revenue From Averted
+   Missed Appointments Following Telemedicine Adoption at a Large Federally
+   Qualified Health Center. 2022 (PMC9520140). $45,578/month at a single large
+   FQHC.
+9. Independent Sector, Value of Volunteer Time, 2024 (based on 2023 data). A
+   volunteer hour is valued at $33.49, which is the labor a coordination failure
+   wastes in a mutual-aid org.
+10. Child Welfare League of America caseload standards: a recommended maximum of
+    12 active CPS investigation cases and 15 ongoing cases. Real caseloads are
+    widely reported to run well above that, though the figure varies by state and
+    I have not tied a single number to one primary source, so none is quoted here.
 
 ## Slack API notes (why the design is what it is)
 
