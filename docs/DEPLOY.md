@@ -70,6 +70,13 @@ ssh jonathan@51.161.82.166 'cd ~/experimental-projects/loose-ends && docker comp
 ssh jonathan@51.161.82.166 'cd ~/experimental-projects/loose-ends && docker compose start'
 ```
 
+## Alternatives (the agent is portable)
+
+Loose Ends is a plain Docker worker with no ports, no volumes, and no inbound
+HTTP. Anything that keeps a container running will host it. The OVH box above is
+what is actually live; the options below are equally valid and are here so the
+project is not tied to one provider.
+
 ## Option A: Render, from the dashboard (no CLI)
 
 The repo is public and ships a [`render.yaml`](../render.yaml) blueprint.

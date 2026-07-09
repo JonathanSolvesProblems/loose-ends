@@ -3,3 +3,6 @@ dist/
 .env
 *.log
 .DS_Store
+
+# Working notes for the Devpost submission form. Not part of the project.
+SUBMISSION.md
