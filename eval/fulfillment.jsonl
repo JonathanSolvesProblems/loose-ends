@@ -1,0 +1,30 @@
+{"loop": "follow up with the Diaz family about their housing application", "candidate": "closed out the Diaz housing case, they got the voucher", "fulfilled": true, "note": "explicit completion, names the case"}
+{"loop": "send the grant report to the funder", "candidate": "grant report is sent, the funder confirmed receipt", "fulfilled": true, "note": "explicit"}
+{"loop": "confirm the clinic appointment for Mr. Okafor", "candidate": "Confirmed Mr. Okafor's clinic appointment for Thursday, all set.", "fulfilled": true, "note": "explicit"}
+{"loop": "call the shelter about the pantry delivery", "candidate": "called the shelter, delivery is booked for Tuesday", "fulfilled": true, "note": "explicit"}
+{"loop": "file the incident report", "candidate": "incident report filed with the county this morning", "fulfilled": true, "note": "explicit"}
+{"loop": "drive the food delivery to the shelter", "candidate": "food delivery dropped off and signed for", "fulfilled": true, "note": "synonym for done"}
+{"loop": "reach out to the Nguyen family", "candidate": "reached out to the Nguyens, they're all set for now", "fulfilled": true, "note": "explicit"}
+{"loop": "take the intake call for the new client", "candidate": "took the intake call, notes are in the file", "fulfilled": true, "note": "explicit"}
+{"loop": "confirm we still have the correct phone number for the Alvarez family", "candidate": "Alvarez number confirmed and updated in the system", "fulfilled": true, "note": "explicit"}
+{"loop": "deliver the budget draft", "candidate": "budget draft is in your inbox", "fulfilled": true, "note": "oblique completion, no completion keyword"}
+{"loop": "follow up with the Diaz family about their housing application", "candidate": "the Diaz family has their voucher now", "fulfilled": true, "note": "oblique completion, no completion keyword"}
+{"loop": "onboard this week's volunteers", "candidate": "all six volunteers are onboarded and scheduled", "fulfilled": true, "note": "explicit"}
+{"loop": "follow up with the Diaz family about their housing application", "candidate": "thanks!", "fulfilled": false, "note": "gratitude is not evidence"}
+{"loop": "follow up with the Diaz family about their housing application", "candidate": "sounds good", "fulfilled": false, "note": "acknowledgement is not evidence"}
+{"loop": "follow up with the Diaz family about their housing application", "candidate": "on it", "fulfilled": false, "note": "acceptance is not completion"}
+{"loop": "send the grant report to the funder", "candidate": "I'll send the grant report tomorrow", "fulfilled": false, "note": "a new promise, not proof"}
+{"loop": "send the grant report to the funder", "candidate": "did anyone send the grant report yet?", "fulfilled": false, "note": "a question, not proof"}
+{"loop": "follow up with the Diaz family about their housing application", "candidate": "closed out the Ramirez case, they got the voucher", "fulfilled": false, "note": "DIFFERENT case: must not cross-verify"}
+{"loop": "confirm the clinic appointment for Mr. Okafor", "candidate": "confirmed the clinic appointment for Mrs. Silva", "fulfilled": false, "note": "different person: must not cross-verify"}
+{"loop": "call the shelter about the pantry delivery", "candidate": "I called my mom back, sorry for the delay", "fulfilled": false, "note": "contains 'called' but unrelated"}
+{"loop": "file the incident report", "candidate": "the deploy finished and everything is green", "fulfilled": false, "note": "contains 'finished' but unrelated"}
+{"loop": "send the grant report to the funder", "candidate": "the report is almost done, still needs the appendix", "fulfilled": false, "note": "partial progress is not done"}
+{"loop": "follow up with the Diaz family about their housing application", "candidate": "tried calling the Diaz family, no answer, will retry", "fulfilled": false, "note": "attempted, not completed"}
+{"loop": "drive the food delivery to the shelter", "candidate": "we should grab lunch sometime", "fulfilled": false, "note": "social filler"}
+{"loop": "take the intake call for the new client", "candidate": "who is covering the intake call today?", "fulfilled": false, "note": "a question about the same work"}
+{"loop": "onboard this week's volunteers", "candidate": "volunteer onboarding is scheduled for Friday", "fulfilled": false, "note": "scheduled is not done"}
+{"loop": "confirm we still have the correct phone number for the Alvarez family", "candidate": "no worries, already handled that one", "fulfilled": true, "note": "vague but genuinely claims completion of the referenced item"}
+{"loop": "send the grant report to the funder", "candidate": "cancelled the grant application, we're not applying this cycle", "fulfilled": false, "note": "cancelled is not fulfilled; the loop should be dismissed by a human, not auto-verified"}
+{"loop": "file the incident report", "candidate": "the incident report was rejected, I need to redo it", "fulfilled": false, "note": "rejected work is not completed work"}
+{"loop": "call the shelter about the pantry delivery", "candidate": "left a voicemail for the shelter", "fulfilled": false, "note": "contacted but the ask was not resolved"}

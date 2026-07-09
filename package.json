@@ -13,7 +13,9 @@
     "dev": "node --experimental-strip-types --env-file-if-exists=.env src/index.ts",
     "eval": "node --experimental-strip-types --env-file-if-exists=.env eval/evaluate.ts",
     "eval:llm": "node --experimental-strip-types --env-file-if-exists=.env eval/evaluate.ts --llm",
-    "test": "node --experimental-strip-types --test test/ledger.test.ts test/dates.test.ts test/extractor.test.ts"
+    "eval:fulfillment": "node --experimental-strip-types --env-file-if-exists=.env eval/evaluate-fulfillment.ts",
+    "eval:fulfillment:llm": "node --experimental-strip-types --env-file-if-exists=.env eval/evaluate-fulfillment.ts --llm",
+    "test": "node --experimental-strip-types --test test/ledger.test.ts test/dates.test.ts test/extractor.test.ts test/fulfillment.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",

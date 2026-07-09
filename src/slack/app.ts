@@ -18,7 +18,7 @@ import { loadConfig } from "../config.ts";
 import { Ledger } from "../ledger.ts";
 import { createLlm } from "../llm.ts";
 import { LlmExtractor, isSoftNoise } from "../extractor.ts";
-import { FulfillmentDetector, looksLikeCompletion } from "../fulfillment.ts";
+import { FulfillmentDetector } from "../fulfillment.ts";
 import { buildCard } from "../actions.ts";
 import { ACTION_ID, decodeAction, renderCard, renderResolved } from "./blockkit.ts";
 import { searchContext } from "./rts.ts";
@@ -131,7 +131,9 @@ async function resolveCard(client: WebClient, loopId: string, headline: string, 
  * evidence message itself with a ✅.
  */
 async function detectFulfillment(client: WebClient, incoming: IncomingMessage, now: number): Promise<boolean> {
-  if (!looksLikeCompletion(incoming.text)) return false; // cheap gate before any LLM call
+  // No blanket keyword gate here: real evidence is often oblique ("the Diaz family
+  // has their voucher now"). isEvidenceOfFulfillment applies a per-loop gate, so a
+  // message only reaches the model if it plausibly bears on THAT loop.
   let verified = false;
   for (const loop of ledger.all()) {
     if (loop.source.channelId !== incoming.channelId || loop.source.ts === incoming.ts) continue;

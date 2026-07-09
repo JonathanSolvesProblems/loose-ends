@@ -125,7 +125,23 @@ The AI doubles recall and halves false positives. That is the argument for it
 being load-bearing rather than decorative. A weekend keyword bot tops out at the
 first row.
 
-25 unit tests, a clean type-check, and the whole thing live-tested in a sandbox.
+Then I measured the part that actually matters. Finding a dropped ask is table
+stakes. The thing nobody else does is refusing to close it without proof, so the
+verifier got its own corpus, and I treated its two errors as very different. A
+false verify means marking work done that never happened, which is the exact harm
+this project exists to prevent. A missed proof just leaves the loop open for a
+human, which is safe.
+
+| Verifier | Precision on "done" | Recall of real proof | False-verify rate |
+| --- | --- | --- | --- |
+| Keyword bot | 63.6% | 53.8% | 23.5% |
+| Loose Ends | **100%** | **92.3%** | **0.0%** |
+
+A keyword bot closes the Diaz case when somebody writes "closed out the Ramirez
+case." Loose Ends made zero false verifies across 17 negatives.
+
+31 unit tests, a clean type-check, live-tested in a sandbox, and deployed as a
+portless Docker worker.
 
 ## What I learned
 

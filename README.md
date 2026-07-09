@@ -135,12 +135,37 @@ fires on (*"I'll be out Friday"*). On that 48-message frontline corpus:
 | Regex clone (`npm run eval`) | 76.5% | 52.0% | 17.4% | 100% |
 | **LLM extractor** — OpenAI `gpt-4o-mini` (`npm run eval:llm`) | **92.6%** | **100%** | **8.7%** | **100%** |
 
-The delta is the argument: the AI takes **recall from 52% to 100%** — it catches
-every dropped ask a keyword filter can't see — while **halving the false-positive
-rate** (17.4% → 8.7%) and nailing the request-vs-commitment split. That is where
+The delta is the argument: the AI takes **recall from 52% to 100%**, catching
+every dropped ask a keyword filter cannot see, while **halving the false-positive
+rate** (17.4% to 8.7%) and nailing the request-vs-commitment split. That is where
 the AI is load-bearing, not bolted on. `npm run eval` prints exactly which
 messages each extractor misses and which it false-fires on. (Measured on
 `gpt-4o-mini`; swap `LOOSE_ENDS_MODEL` for a stronger model to push it further.)
+
+### Verifying the work actually landed (the moat, measured)
+
+Extraction accuracy says nothing about whether the agent can tell real proof from
+"thanks!". So the verifier gets its own corpus (`eval/fulfillment.jsonl`) and its
+own number. The two errors are **not** symmetric, and the design leans on that:
+
+- **False verify**: marking work done that never happened. This is precisely the
+  harm Loose Ends exists to prevent. It must be near zero.
+- **Missed proof**: failing to notice real evidence. The loop simply stays open and
+  a human still sees it. Safe.
+
+| Verifier | Precision on "done" | Recall of real proof | False-verify rate |
+| --- | --- | --- | --- |
+| Keyword bot (`npm run eval:fulfillment`) | 63.6% | 53.8% | 23.5% |
+| **Loose Ends** (`npm run eval:fulfillment:llm`) | **100%** | **92.3%** | **0.0%** |
+
+A keyword bot closes the Diaz case when somebody writes *"closed out the Ramirez
+case"*, and it closes the incident report when the deploy "finished". Run
+`npm run eval:fulfillment` and watch it happen. Loose Ends made **zero** false
+verifies across 17 negatives.
+
+Its one miss is *"no worries, already handled that one"*, which the model declined
+to accept because it names no work. That refusal is arguably more correct than the
+label, and it is the safe direction to fail in.
 
 ## Repo layout
 
