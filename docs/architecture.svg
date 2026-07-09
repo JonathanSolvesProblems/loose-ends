@@ -105,5 +105,5 @@
   <text x="84" y="679" class="sub" font-size="13">Deterministic (auditable)</text>
   <rect x="250" y="666" width="16" height="16" rx="3" class="gen"/>
   <text x="274" y="679" class="sub" font-size="13">Generative: LLM (OpenAI)</text>
-  <text x="1100" y="679" text-anchor="end" class="sub" font-size="13" font-weight="600" fill="#1b4332">Eligible tech: Slack AI · Real-Time Search · Events API + Block Kit</text>
+  <text x="1100" y="679" text-anchor="end" class="sub" font-size="13" font-weight="600" fill="#1b4332">Qualifying technology: Slack Real-Time Search API (load-bearing)</text>
 </svg>

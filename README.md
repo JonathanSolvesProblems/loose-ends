@@ -71,7 +71,7 @@ saying otherwise would be easy to disprove in about five minutes of searching.
 
 | Criterion | How Loose Ends scores |
 | --- | --- |
-| **Technological Implementation** | Three eligible technologies, each load-bearing: Slack AI (a real LLM call — bring-your-own-model, OpenAI or Claude — does the request-vs-commitment judgment), the Real-Time Search API (an on-demand "what's still open here?" lookup), and Block Kit + Events API as the governed action layer. A deterministic ledger underneath makes every status decision reproducible and auditable. |
+| **Technological Implementation** | The qualifying technology is the **Real-Time Search API**, and it is load-bearing rather than decorative: it is the only way to surface work that was dropped before the agent was installed, because `conversations.history` is throttled to 1 request/minute for non-Marketplace apps. Delete it and that capability disappears. Around it: a real LLM call makes the request-vs-commitment judgment, Block Kit and the Events API form the governed action layer, and a deterministic ledger makes every status decision reproducible and auditable. |
 | **Design** | Restraint is the UX. Silent on filler; a calm claim card only when an ask is unowned; a louder escalation only when it drops; one-tap Claim / Done / Snooze / Dismiss. Never spams a channel. |
 | **Potential Impact** | Targets dropped work in mission-driven workspaces, where the downstream harm is a person, not a deliverable, and is quantifiable (see above). |
 | **Quality of the Idea** | Reframes the saturated "commitment bot" into the un-served ownership-gap problem, and adds the one capability none of them have: verifying the work actually landed. |
