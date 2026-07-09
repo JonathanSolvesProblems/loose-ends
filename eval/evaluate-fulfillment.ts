@@ -50,24 +50,18 @@ async function pickVerifier(): Promise<{ name: string; verify: Verifier }> {
   if (!process.argv.includes("--llm")) {
     return { name: "keyword baseline (offline)", verify: keywordVerifier };
   }
-  const openaiKey = process.env.OPENAI_API_KEY;
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
   const baseURL = process.env.LOOSE_ENDS_LLM_BASE_URL || undefined;
-
-  let settings: { provider: "openai" | "anthropic"; apiKey: string; model: string; baseURL?: string };
-  if (openaiKey || baseURL) {
-    settings = { provider: "openai", apiKey: openaiKey || "local", model: process.env.LOOSE_ENDS_MODEL || "gpt-4o-mini", baseURL };
-  } else if (anthropicKey) {
-    settings = { provider: "anthropic", apiKey: anthropicKey, model: process.env.LOOSE_ENDS_MODEL || "claude-haiku-4-5" };
-  } else {
-    console.error("--llm needs OPENAI_API_KEY or ANTHROPIC_API_KEY. See .env.example.");
+  const apiKey = process.env.OPENAI_API_KEY || (baseURL ? "local" : "");
+  if (!apiKey) {
+    console.error("--llm needs OPENAI_API_KEY (or LOOSE_ENDS_LLM_BASE_URL for a local model). See .env.example.");
     process.exit(1);
   }
+  const model = process.env.LOOSE_ENDS_MODEL || "gpt-4o-mini";
   const { createLlm } = await import("../src/llm.ts");
   const { FulfillmentDetector } = await import("../src/fulfillment.ts");
-  const detector = new FulfillmentDetector(createLlm(settings));
+  const detector = new FulfillmentDetector(createLlm({ apiKey, model, baseURL }));
   return {
-    name: `evidence detector (${settings.provider}: ${settings.model})`,
+    name: `evidence detector (${model})`,
     verify: (loop, candidate) => detector.isEvidenceOfFulfillment(loop, candidate),
   };
 }

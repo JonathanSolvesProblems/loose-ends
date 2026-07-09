@@ -119,7 +119,7 @@ export function groundDeadline(text: string, observedAt: number, tzOffsetMinutes
     if (re.test(t)) {
       const isNext = new RegExp(`\\bnext ${name}\\b`).test(t);
       let delta = (dow - today.weekday + 7) % 7;
-      if (isNext) delta += delta === 0 ? 7 : 7; // "next Friday" is always a week out
+      if (isNext) delta += 7; // "next Friday" is always a week out
       return fromLocal(addDays(today, delta), atHour, atMin, tzOffsetMinutes);
     }
   }

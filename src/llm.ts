@@ -10,12 +10,12 @@
 //      work actually land? This is the moat: evidence-based verification, not a
 //      timer. "Closed" is not "done".
 //
-// Provider-agnostic by design: OpenAI (default when OPENAI_API_KEY / a local
-// OpenAI-compatible endpoint is set) or Anthropic. The challenge requires no
-// specific vendor. Structured outputs guarantee the model returns exactly the
-// shape we parse, so there is no brittle prompt-scraping.
+// FAILURES ARE LOUD. An earlier version swallowed every error and returned null,
+// which quietly degraded classify() to "not a loop" and confirmsFulfillment() to
+// "no evidence". A bad key, a 429, or a network blip would make the agent go
+// silent while looking perfectly healthy. On a server nobody is watching, that is
+// the worst possible failure mode for a safety net. Every failure now logs.
 
-import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import type { LlmSettings } from "./config.ts";
 
@@ -82,11 +82,13 @@ const FULFILLMENT_SYSTEM = [
   "You verify whether an open loop in a Slack workspace has actually been fulfilled by a later message.",
   "Given the open loop and a candidate later message, decide if the candidate is concrete EVIDENCE the work happened",
   '(e.g. "closed out the Diaz housing case", "report sent to the funder", "called them, all set", a link to the deliverable).',
-  "A restatement, a new promise, a question, or unrelated chatter is NOT evidence.",
-  "Be conservative: only fulfilled=true when the message genuinely shows the work landed. confidence is 0..1.",
+  "The evidence must be about THIS loop. A message describing different work, a different person, or a different case is NOT evidence.",
+  "A restatement, a new promise, an attempt, partial progress, a cancellation, rejected work, a question, or unrelated chatter is NOT evidence.",
+  "Be conservative. Marking work done that never happened is the worst error you can make; failing to notice real proof is safe.",
+  "Only fulfilled=true when the message genuinely shows the work landed. confidence is 0..1.",
 ].join("\n");
 
-// --- Shared response shaping (both providers return the same JSON shape) -------
+// --- Shared response shaping -------------------------------------------------
 
 function clamp01(n: number): number {
   return Math.max(0, Math.min(1, n));
@@ -112,16 +114,10 @@ function shapeFulfillment(raw: unknown): Fulfillment {
   return { fulfilled: f.fulfilled, confidence: clamp01(typeof f.confidence === "number" ? f.confidence : 0) };
 }
 
-function classifyUser(text: string, authorName: string): string {
-  return `Author: ${authorName}\nMessage: ${JSON.stringify(text)}`;
-}
-
-function fulfillmentUser(loopSummary: string, candidateText: string): string {
-  return `Open loop: ${JSON.stringify(loopSummary)}\nCandidate later message: ${JSON.stringify(candidateText)}`;
-}
-
-// --- OpenAI-backed (default) --------------------------------------------------
-
+/**
+ * The model backing the agent. OpenAI-compatible, so it also works against a
+ * local endpoint (Ollama, LM Studio) via LOOSE_ENDS_LLM_BASE_URL.
+ */
 export class OpenAiLlm implements LlmClassifier {
   private readonly client: OpenAI;
   private readonly model: string;
@@ -131,11 +127,23 @@ export class OpenAiLlm implements LlmClassifier {
   }
 
   async classify(text: string, authorName: string): Promise<Classification> {
-    return shapeClassification(await this.call(CLASSIFY_SYSTEM, classifyUser(text, authorName), "classification", CLASSIFY_SCHEMA));
+    const raw = await this.call(
+      CLASSIFY_SYSTEM,
+      `Author: ${authorName}\nMessage: ${JSON.stringify(text)}`,
+      "classification",
+      CLASSIFY_SCHEMA,
+    );
+    return shapeClassification(raw);
   }
 
   async confirmsFulfillment(loopSummary: string, candidateText: string): Promise<Fulfillment> {
-    return shapeFulfillment(await this.call(FULFILLMENT_SYSTEM, fulfillmentUser(loopSummary, candidateText), "fulfillment", FULFILLMENT_SCHEMA));
+    const raw = await this.call(
+      FULFILLMENT_SYSTEM,
+      `Open loop: ${JSON.stringify(loopSummary)}\nCandidate later message: ${JSON.stringify(candidateText)}`,
+      "fulfillment",
+      FULFILLMENT_SCHEMA,
+    );
+    return shapeFulfillment(raw);
   }
 
   private async call(system: string, user: string, name: string, schema: unknown): Promise<unknown> {
@@ -149,51 +157,23 @@ export class OpenAiLlm implements LlmClassifier {
         response_format: { type: "json_schema", json_schema: { name, strict: true, schema } },
       } as unknown as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming);
       const content = res.choices[0]?.message?.content;
-      return content ? JSON.parse(content) : null;
-    } catch {
-      return null; // a model error must never crash the agent loop
-    }
-  }
-}
-
-// --- Anthropic-backed (Claude) ------------------------------------------------
-
-export class AnthropicLlm implements LlmClassifier {
-  private readonly client: Anthropic;
-  private readonly model: string;
-  constructor(apiKey: string, model = "claude-haiku-4-5") {
-    this.client = new Anthropic({ apiKey });
-    this.model = model;
-  }
-
-  async classify(text: string, authorName: string): Promise<Classification> {
-    return shapeClassification(await this.call(CLASSIFY_SYSTEM, classifyUser(text, authorName), CLASSIFY_SCHEMA, 400));
-  }
-
-  async confirmsFulfillment(loopSummary: string, candidateText: string): Promise<Fulfillment> {
-    return shapeFulfillment(await this.call(FULFILLMENT_SYSTEM, fulfillmentUser(loopSummary, candidateText), FULFILLMENT_SCHEMA, 120));
-  }
-
-  private async call(system: string, user: string, schema: unknown, maxTokens: number): Promise<unknown> {
-    try {
-      const res = await this.client.messages.create({
-        model: this.model,
-        max_tokens: maxTokens,
-        system,
-        messages: [{ role: "user", content: user }],
-        output_config: { format: { type: "json_schema", schema } },
-      } as unknown as Anthropic.MessageCreateParamsNonStreaming);
-      const block = res.content.find((b): b is Anthropic.TextBlock => b.type === "text");
-      return block ? JSON.parse(block.text) : null;
-    } catch {
+      if (!content) {
+        console.error(`[loose-ends] LLM ${name}: empty response from ${this.model}`);
+        return null;
+      }
+      return JSON.parse(content);
+    } catch (err: any) {
+      // Never crash the agent loop, but never fail silently either. A swallowed
+      // 401/429 would make the agent look alive while tracking nothing.
+      const status = err?.status ?? err?.response?.status;
+      const reason = err?.message ?? String(err);
+      console.error(`[loose-ends] LLM ${name} FAILED (model=${this.model}${status ? `, status=${status}` : ""}): ${reason}`);
       return null;
     }
   }
 }
 
-/** Build the classifier the config selected. */
+/** Build the classifier from config. */
 export function createLlm(settings: LlmSettings): LlmClassifier {
-  return settings.provider === "openai"
-    ? new OpenAiLlm(settings.apiKey, settings.model, settings.baseURL)
-    : new AnthropicLlm(settings.apiKey, settings.model);
+  return new OpenAiLlm(settings.apiKey, settings.model, settings.baseURL);
 }

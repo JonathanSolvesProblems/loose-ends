@@ -30,9 +30,15 @@ from 65% in an earlier period (JAMA Network Open, 2024).
 
 The loop looked closed. The person was never served.
 
-Every commitment bot I found treats a passing deadline, or a clicked button, as
-proof that work happened. None of them check. In a nonprofit or a mutual-aid
-Slack, that gap is not a slipped deck. It is a family that never got a callback.
+I looked hard at what already exists. Commitment detection in Slack is crowded.
+The part nobody does is deciding that work is finished by *reading later messages
+in the channel*. Claryti surfaces an item when the deadline passes without
+delivery, and never checks. Commitment Crawler sends deadline nudges. Slack Lists
+and Workast use a manual "mark done" button, which is self-report. Every one of
+them accepts a passing deadline or a clicked button as proof.
+
+In a nonprofit or a mutual-aid Slack, that gap is not a slipped deck. It is a
+family that never got a callback.
 
 ## What it does
 

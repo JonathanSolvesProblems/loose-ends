@@ -75,25 +75,17 @@ async function evaluate(extractor: Extractor, corpus: CorpusRow[]) {
 
 async function pickExtractor(): Promise<{ name: string; extractor: Extractor }> {
   if (process.argv.includes("--llm")) {
-    const openaiKey = process.env.OPENAI_API_KEY;
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
     const baseURL = process.env.LOOSE_ENDS_LLM_BASE_URL || undefined;
+    const apiKey = process.env.OPENAI_API_KEY || (baseURL ? "local" : "");
     const tz = Number(process.env.LOOSE_ENDS_TZ_OFFSET) || 0;
-
-    // Same bring-your-own-model resolution as the app: OpenAI (or a local
-    // endpoint) if present, else Anthropic.
-    let settings: { provider: "openai" | "anthropic"; apiKey: string; model: string; baseURL?: string };
-    if (openaiKey || baseURL) {
-      settings = { provider: "openai", apiKey: openaiKey || "local", model: process.env.LOOSE_ENDS_MODEL || "gpt-4o-mini", baseURL };
-    } else if (anthropicKey) {
-      settings = { provider: "anthropic", apiKey: anthropicKey, model: process.env.LOOSE_ENDS_MODEL || "claude-haiku-4-5" };
-    } else {
-      console.error("--llm needs OPENAI_API_KEY or ANTHROPIC_API_KEY (or LOOSE_ENDS_LLM_BASE_URL). See .env.example.");
+    if (!apiKey) {
+      console.error("--llm needs OPENAI_API_KEY (or LOOSE_ENDS_LLM_BASE_URL for a local model). See .env.example.");
       process.exit(1);
     }
+    const model = process.env.LOOSE_ENDS_MODEL || "gpt-4o-mini";
     // Dynamic import so the default heuristic run never loads an LLM SDK.
     const { createLlm } = await import("../src/llm.ts");
-    return { name: `LlmExtractor (${settings.provider}: ${settings.model})`, extractor: new LlmExtractor(createLlm(settings), tz) };
+    return { name: `LlmExtractor (${model})`, extractor: new LlmExtractor(createLlm({ apiKey, model, baseURL }), tz) };
   }
   return { name: "HeuristicExtractor (regex, offline)", extractor: new HeuristicExtractor() };
 }

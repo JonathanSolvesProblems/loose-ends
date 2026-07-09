@@ -8,21 +8,33 @@ of a mission-driven team, and it verifies the fix instead of trusting a timer.
 
 **Track:** Slack Agent for Good (nonprofit operations / frontline mission orgs).
 
-## Uniqueness claim (locked)
+## Uniqueness claim (narrow, and checked)
 
-No existing tool combines **unowned-request detection** (an ask nobody accepted,
-distinct from a personal commitment someone forgot) + **deterministic escalation
-to a pre-designated backup human** + **evidence-based fulfillment verification**
-(confirming the work landed from the conversation, not just that a deadline
-passed) — all tracked through a **deterministic, auditable ownership state
-machine**, aimed at social-impact Slack workspaces.
+> **Loose Ends is the only Slack-native agent that closes a loop by finding
+> evidence in later channel conversation, rather than by self-report or a passed
+> deadline, and that treats a deadline passing without proof as BROKEN.**
 
-Commitment detection is now commoditized (Commitment Crawler, Claryti, Sleuth,
-Day.ai). Routing/escalation is going native (Salesforce's March 2026 Slackbot
-update ships an escalation template). The one thing **nothing else does** is close
-the loop on *evidence*: every commitment bot marks a task done when a timer runs
-out or a button is clicked. Loose Ends keeps a loop **open** if the deadline
-passes with no proof the work happened, because *closed is not done*.
+That sentence is deliberately narrow, because the wider version is not true and I
+checked. Here is the honest breakdown:
+
+- **Commitment detection is commoditized.** Commitment Crawler, Claryti, Sleuth,
+  and Day.ai all extract "I'll send X by Friday" and nag about it. Loose Ends is
+  not novel here.
+- **The unowned-vs-commitment distinction is not net-new either.** Claryti already
+  separates commitments from requests; Thena and Suptask split "unassigned" from
+  "assigned". What is fresher is treating an unowned ask as a first-class safety-net
+  item in an ordinary conversation channel, rather than only inside a designated
+  ticket channel with an intake flow.
+- **Evidence-based completion is not unheard of outside Slack.** Avoma, a meeting
+  assistant, markets auto-completing a task from cross-tool signals such as a
+  follow-up email being sent or a next meeting being booked.
+
+What survives all of that, and what I could not find anywhere: no Slack-native tool
+decides completion by reading *later messages in the channel*. Claryti surfaces an
+item when "the deadline passes without delivery" and never checks. Commitment
+Crawler sends deadline-based nudges. Slack Lists, Wrangle, and Workast use a manual
+"mark done" button, which is self-report. Loose Ends keeps a loop **open** when the
+deadline passes with no proof, because *closed is not done*.
 
 ## The problem, with a number
 
@@ -42,14 +54,18 @@ nobody does.
 I re-checked the prior art (July 2026). The "detect a Slack promise and nudge"
 mechanic is fully taken. Here is where Loose Ends does something they do not:
 
-| Capability | Commitment Crawler / Claryti | Follow Up Bot | ClearFeed / Suptask | Slackbot native (2026) | **Loose Ends** |
+| Capability | Commitment Crawler / Claryti | Follow Up Bot | ClearFeed / Suptask | Avoma (not Slack-native) | **Loose Ends** |
 | --- | --- | --- | --- | --- | --- |
-| First-person commitments | Yes | No | No | Partial | Yes |
-| **Unowned requests (nobody accepted it)** | No | Partial (no-reply) | Ticket queues only | No | **Yes** |
-| **Escalation to a designated backup human** | No | No | Support SLA | Template (reactive) | **Yes** |
-| **Evidence-based fulfillment verification** | No (timers) | No | No | No | **Yes** |
-| **Deterministic, auditable state machine** | No | No | No | No | **Yes** |
-| **Social-impact / frontline focus** | No | No | No | No | **Yes** |
+| First-person commitments | Yes | No | No | Yes | Yes |
+| Unowned requests (nobody accepted it) | Partial (Claryti) | Partial (no-reply) | Ticket queues only | No | **Yes** |
+| Escalation to a designated backup human | No | No | Support SLA | No | **Yes** |
+| Completion decided by evidence, not self-report | No (timers) | No | No | Yes (email/calendar signals) | **Yes** |
+| **Evidence read from later channel conversation** | **No** | **No** | **No** | **No** | **Yes** |
+| Deadline passed with no proof stays open (BROKEN) | No | No | No | No | **Yes** |
+| Deterministic, auditable state machine | No | No | No | No | **Yes** |
+
+The bolded row is the whole claim. Everything above it is contested ground, and
+saying otherwise would be easy to disprove in about five minutes of searching.
 
 ## How it maps to the judging criteria
 

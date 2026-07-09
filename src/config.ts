@@ -13,11 +13,7 @@ export interface SlackCreds {
   signingSecret: string;
 }
 
-export type LlmProvider = "openai" | "anthropic";
-
 export interface LlmSettings {
-  /** Which SDK backs the extractor. Bring-your-own-model; judges score AI use, not vendor. */
-  provider: LlmProvider;
   apiKey: string;
   model: string;
   /** OpenAI-compatible base URL override (e.g. a local Ollama at :11434/v1). */
@@ -26,7 +22,7 @@ export interface LlmSettings {
 
 export interface AppConfig {
   slack: SlackCreds;
-  /** The AI judgment layer (OpenAI or Anthropic, chosen from whichever key is present). */
+  /** The AI judgment layer. Bring-your-own-model; the challenge mandates no vendor. */
   llm: LlmSettings;
   /** Channel ids the agent may watch. Empty => every channel the bot is in. */
   watchedChannels: string[];
@@ -59,34 +55,17 @@ const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
 
 /**
- * Pick the model provider from whichever key is present. Bring-your-own-model:
- * the challenge requires no specific vendor. OPENAI_API_KEY (or an OpenAI-compatible
- * base URL, e.g. local Ollama) selects OpenAI; ANTHROPIC_API_KEY selects Anthropic.
- * LOOSE_ENDS_PROVIDER forces the choice.
+ * Resolve the model. The API is OpenAI-compatible, so LOOSE_ENDS_LLM_BASE_URL
+ * points this at a local endpoint (Ollama, LM Studio) for a zero-cost, fully
+ * offline run, in which case no cloud key is needed.
  */
 function resolveLlm(): LlmSettings {
-  const forced = process.env.LOOSE_ENDS_PROVIDER?.trim().toLowerCase();
   const baseURL = process.env.LOOSE_ENDS_LLM_BASE_URL?.trim() || undefined;
-  const hasOpenAi = !!process.env.OPENAI_API_KEY || !!baseURL;
-  const hasAnthropic = !!process.env.ANTHROPIC_API_KEY;
-
-  const provider: LlmProvider =
-    forced === "openai" || forced === "anthropic"
-      ? (forced as LlmProvider)
-      : hasOpenAi
-        ? "openai"
-        : "anthropic";
-
-  const model =
-    process.env.LOOSE_ENDS_MODEL?.trim() || (provider === "openai" ? "gpt-4o-mini" : "claude-haiku-4-5");
-
-  if (provider === "openai") {
-    // A local OpenAI-compatible endpoint may not need a real key.
-    const apiKey = process.env.OPENAI_API_KEY?.trim() || (baseURL ? "local" : "");
-    if (!apiKey) throw new Error("Set OPENAI_API_KEY (or LOOSE_ENDS_LLM_BASE_URL for a local model). See .env.example.");
-    return { provider, apiKey, model, baseURL };
+  const apiKey = process.env.OPENAI_API_KEY?.trim() || (baseURL ? "local" : "");
+  if (!apiKey) {
+    throw new Error("Set OPENAI_API_KEY (or LOOSE_ENDS_LLM_BASE_URL for a local model). See .env.example.");
   }
-  return { provider, apiKey: req("ANTHROPIC_API_KEY"), model };
+  return { apiKey, model: process.env.LOOSE_ENDS_MODEL?.trim() || "gpt-4o-mini", baseURL };
 }
 
 /** Read and validate the full app config. Throws if a required var is missing. */

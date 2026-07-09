@@ -3,7 +3,7 @@
 //
 // Pipeline (all real, no mocks):
 //   Events API message.channels  (the eyes — push, real-time, not throttled)
-//     -> deterministic noise filter + Claude classification (the judgment)
+//     -> deterministic noise filter + LLM classification (the judgment)
 //     -> deterministic ledger: ownership, SLA timers, escalation (the spine)
 //     -> chat.postMessage Block Kit cards, Claim/Done/Snooze/Dismiss (the hands)
 //     -> evidence-based fulfillment from the same stream (the moat)
@@ -82,9 +82,11 @@ async function unreact(client: WebClient, channel: string, ts: string, name: str
  * Falls back to the configured workspace offset on any failure.
  */
 const tzCache = new Map<string, number>();
+const TZ_CACHE_MAX = 500;
 async function tzFor(client: WebClient, userId: string): Promise<number> {
   const cached = tzCache.get(userId);
   if (cached !== undefined) return cached;
+  if (tzCache.size >= TZ_CACHE_MAX) tzCache.clear(); // bounded; a re-fetch is cheap
   let minutes = cfg.tzOffsetMinutes;
   try {
     const res: any = await client.users.info({ user: userId });
@@ -123,6 +125,11 @@ async function resolveCard(client: WebClient, loopId: string, headline: string, 
   if (!ref) return;
   const rendered = renderResolved(headline, detail, note);
   await client.chat.update({ channel: ref.channel, ts: ref.ts, text: rendered.text, blocks: rendered.blocks as any });
+
+  // A verified, broken, or dismissed loop will never be re-rendered, so stop
+  // holding its message coordinates. Long-running agents should not grow forever.
+  const loop = ledger.get(loopId);
+  if (loop && !OPEN.includes(loop.status)) cardRefs.delete(loopId);
 }
 
 /**
@@ -134,22 +141,35 @@ async function detectFulfillment(client: WebClient, incoming: IncomingMessage, n
   // No blanket keyword gate here: real evidence is often oblique ("the Diaz family
   // has their voucher now"). isEvidenceOfFulfillment applies a per-loop gate, so a
   // message only reaches the model if it plausibly bears on THAT loop.
+  const open = ledger
+    .all()
+    .filter((l) => l.source.channelId === incoming.channelId && l.source.ts !== incoming.ts)
+    .filter((l) => OPEN.includes(l.status));
+  if (open.length === 0) return false;
+
+  // Check the loops concurrently. Serially awaiting one model round-trip per open
+  // loop left the eyes reaction sitting on the message for seconds in a busy
+  // channel. The gate inside means most of these resolve without a model call.
+  const results = await Promise.all(
+    open.map(async (loop) => ({
+      loop,
+      isEvidence: await fulfillment.isEvidenceOfFulfillment(loop.summary, incoming.text),
+    })),
+  );
+
   let verified = false;
-  for (const loop of ledger.all()) {
-    if (loop.source.channelId !== incoming.channelId || loop.source.ts === incoming.ts) continue;
-    if (!OPEN.includes(loop.status)) continue;
-    if (await fulfillment.isEvidenceOfFulfillment(loop.summary, incoming.text)) {
-      ledger.markFulfilled(loop.id, now, `evidence:${incoming.ts}`);
-      log(`  ✓ VERIFIED on evidence: "${loop.summary}"`);
-      await resolveCard(
-        client,
-        loop.id,
-        "✅ Verified — closed on evidence",
-        `"${loop.summary}"`,
-        "A later message in this channel showed the work actually landed. Closed on evidence, not because a timer ran out.",
-      );
-      verified = true;
-    }
+  for (const { loop, isEvidence } of results) {
+    if (!isEvidence) continue;
+    ledger.markFulfilled(loop.id, now, `evidence:${incoming.ts}`);
+    log(`  ✓ VERIFIED on evidence: "${loop.summary}"`);
+    await resolveCard(
+      client,
+      loop.id,
+      "✅ Verified — closed on evidence",
+      `"${loop.summary}"`,
+      "A later message in this channel showed the work actually landed. Closed on evidence, not because a timer ran out.",
+    );
+    verified = true;
   }
   return verified;
 }
@@ -342,19 +362,25 @@ async function scanChannel(
   // up with the Diaz family?" asked three times over a week). Report the WORK
   // once, and count how many times it was asked. "Asked 3 times, still nobody
   // claimed it" is a far stronger signal than three identical bullets.
+  // Classify concurrently. Twenty sequential model round-trips left the
+  // coordinator staring at "Searching..." for seconds.
+  const classified = await Promise.all(
+    candidates.map(async (h) => {
+      const incoming: IncomingMessage = {
+        channelId,
+        ts: h.ts,
+        userId: h.authorId!,
+        text: h.text, // transient: classified, then dropped. Never persisted.
+        observedAt: Number(h.ts) * 1000 || Date.now(),
+        permalink: h.permalink,
+        tzOffsetMinutes: await tzFor(client, h.authorId!),
+      };
+      return { hit: h, extracted: await extractor.extract(incoming) };
+    }),
+  );
+
   const byWork = new Map<string, ScanFinding>();
-  for (const h of candidates) {
-    const observedAt = Number(h.ts) * 1000 || Date.now();
-    const incoming: IncomingMessage = {
-      channelId,
-      ts: h.ts,
-      userId: h.authorId!,
-      text: h.text, // transient: classified, then dropped. Never persisted.
-      observedAt,
-      permalink: h.permalink,
-      tzOffsetMinutes: await tzFor(client, h.authorId!),
-    };
-    const extracted = await extractor.extract(incoming);
+  for (const { hit: h, extracted } of classified) {
     if (!extracted) continue;
 
     const key = extracted.summary.toLowerCase().replace(/\s+/g, " ").trim();
@@ -456,8 +482,19 @@ setInterval(async () => {
 
 // --- Boot --------------------------------------------------------------------
 await app.start();
+
+// Escalation to a backup human is the headline feature. Without a coordinator it
+// silently pings nobody, which is exactly the kind of quiet no-op this project
+// exists to hate. Say so loudly rather than pretending to work.
+if (!cfg.coordinatorId) {
+  console.error(
+    "[loose-ends] WARNING: LOOSE_ENDS_COORDINATOR is not set. Unowned work will still " +
+      "escalate, but no backup human will be @-mentioned. Set it to a Slack user id (U...).",
+  );
+}
+
 console.error(
   `⚡ Loose Ends is live (${cfg.demo ? "DEMO timers ~5s" : "production timers"}), ` +
-    `model=${cfg.llm.provider}:${cfg.llm.model}, ` +
+    `model=${cfg.llm.model}, ` +
     `watching ${cfg.watchedChannels.length ? cfg.watchedChannels.join(", ") : "all invited channels"}.`,
 );
