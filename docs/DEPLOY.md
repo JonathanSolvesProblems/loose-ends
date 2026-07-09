@@ -35,6 +35,41 @@ Also note: the ledger is in memory, so a redeploy or restart forgets loops that
 are currently open. That is acceptable for judging and is listed as a known
 limitation in the README.
 
+## Current deployment: OVH sandbox (live)
+
+Loose Ends runs on the OVH sandbox box, `51.161.82.166`, SSH as `jonathan`.
+
+```
+~/experimental-projects/loose-ends/
+├── app/                  git clone of the public repo
+├── docker-compose.yml    portless worker, 1 replica, log rotation
+└── .env                  secrets, chmod 600, no LOOSE_ENDS_DEMO
+```
+
+It is deliberately entangled with nothing else on that shared box. It declares no
+ports, no volumes, no Traefik labels, and no shared network, so it sits alone on
+its own `loose-ends_default` bridge. This mirrors the `~/discord-idea-bot` stack.
+
+**Update to the latest commit:**
+
+```bash
+ssh jonathan@51.161.82.166
+cd ~/experimental-projects/loose-ends
+git -C app pull
+docker compose up -d --build
+docker compose logs -f app          # expect: production timers
+```
+
+**Recording the demo video.** The demo needs the 15 second timers, which means
+running locally with `LOOSE_ENDS_DEMO=1`. Two Socket Mode connections would split
+your events across two ledgers, so stop the server first:
+
+```bash
+ssh jonathan@51.161.82.166 'cd ~/experimental-projects/loose-ends && docker compose stop'
+# record locally with LOOSE_ENDS_DEMO=1 npm start
+ssh jonathan@51.161.82.166 'cd ~/experimental-projects/loose-ends && docker compose start'
+```
+
 ## Option A: Render, from the dashboard (no CLI)
 
 The repo is public and ships a [`render.yaml`](../render.yaml) blueprint.
