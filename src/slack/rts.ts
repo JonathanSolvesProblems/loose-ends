@@ -35,6 +35,8 @@ export interface RtsHit {
   text: string;
   permalink?: string;
   authorId?: string;
+  /** Slack tells us when the author was an app. Our own cards must never be hits. */
+  isBot: boolean;
 }
 
 export interface SearchOptions {
@@ -81,13 +83,17 @@ export async function searchContext(client: WebClient, opts: SearchOptions): Pro
       loggedShape = true;
     }
 
+    // Confirmed live (2026-07-09) that a hit looks like:
+    //   { author_name, author_user_id, team_id, channel_id, channel_name,
+    //     message_ts, content, is_author_bot, permalink }
+    // The fallbacks stay in case Slack renames a field under us.
     return raw.map((m) => ({
-      // Defensive across field-name variants until the shape is pinned down.
-      ts: String(m.ts ?? m.message_ts ?? m.timestamp ?? ""),
-      channelId: String(m.channel?.id ?? m.channel_id ?? m.channel ?? ""),
-      text: String(m.text ?? m.content ?? ""),
+      ts: String(m.message_ts ?? m.ts ?? m.timestamp ?? ""),
+      channelId: String(m.channel_id ?? m.channel?.id ?? m.channel ?? ""),
+      text: String(m.content ?? m.text ?? ""),
       permalink: m.permalink,
       authorId: m.author_user_id ?? m.user ?? m.user_id,
+      isBot: Boolean(m.is_author_bot),
     }));
   } catch (err: any) {
     // Surface WHY, so a missing scope / wrong param / bad token is diagnosable

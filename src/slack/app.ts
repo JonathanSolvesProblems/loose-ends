@@ -23,7 +23,7 @@ import { FulfillmentDetector } from "../fulfillment.ts";
 import { buildCard } from "../actions.ts";
 import { mapLimit } from "../limit.ts";
 import { ACTION_ID, decodeAction, renderCard, renderResolved } from "./blockkit.ts";
-import { searchContext } from "./rts.ts";
+import { searchContext, type RtsHit } from "./rts.ts";
 import type { IncomingMessage, Loop, LoopStatus } from "../types.ts";
 
 const { App } = boltPkg;
@@ -347,6 +347,15 @@ interface ScanFinding {
   occurrences: number;
 }
 
+/** What a briefing found. Only `open` is dropped work; the rest is context. */
+interface ScanResult {
+  open: ScanFinding[];
+  /** Asked, and a later message proved it was finished. */
+  completed: number;
+  /** Already being tracked by the live pipeline, so not re-reported. */
+  alreadyTracking: number;
+}
+
 /**
  * THE RTS FEATURE, and the reason RTS is load-bearing rather than decorative.
  *
@@ -371,26 +380,46 @@ async function scanChannel(
   channelId: string,
   actionToken: string | undefined,
   botUserId: string | undefined,
-): Promise<ScanFinding[]> {
+): Promise<ScanResult> {
   const afterEpochSec = Math.floor((Date.now() - SCAN_LOOKBACK_DAYS * DAY_MS) / 1000);
-  const hits = await searchContext(client, {
-    actionToken,
-    query: "requests, asks, action items, or promises that were never completed",
-    channelId,
-    afterEpochSec,
-    limit: SCAN_MAX_CLASSIFY,
-  });
-  log(`RTS scan returned ${hits.length} hit(s) before filtering`);
+  const usable = (h: RtsHit) =>
+    h.channelId === channelId && // context_channel_id is a SOFT scope
+    !!h.ts &&
+    !h.isBot && // never treat our own cards as evidence or as asks
+    !!h.authorId &&
+    h.authorId !== botUserId &&
+    !(botUserId && h.text.includes(`<@${botUserId}>`)); // commands, not work
 
-  const candidates = hits
-    // context_channel_id is a SOFT scope; Slack may return other channels.
-    .filter((h) => h.channelId === channelId && h.ts)
-    // Don't re-report what the live pipeline is already tracking (read-only check).
-    .filter((h) => !ledger.get(`${channelId}:${h.ts}`))
-    // Skip our own cards and commands addressed to us.
-    .filter((h) => h.authorId && h.authorId !== botUserId)
-    .filter((h) => !(botUserId && h.text.includes(`<@${botUserId}>`)))
-    .slice(0, SCAN_MAX_CLASSIFY);
+  // Two searches: what was asked, and what was reported finished. Without the
+  // second, the scan would report already-completed work as dropped every time the
+  // in-memory ledger is empty, which is after every restart.
+  const [asks, evidence] = await Promise.all([
+    searchContext(client, {
+      actionToken,
+      query: "requests, asks, action items, or promises that were never completed",
+      channelId,
+      afterEpochSec,
+      limit: SCAN_MAX_CLASSIFY,
+    }),
+    searchContext(client, {
+      actionToken,
+      query: "messages reporting that work was completed, finished, sent, filed, closed, delivered, or handled",
+      channelId,
+      afterEpochSec,
+      limit: SCAN_MAX_CLASSIFY,
+    }),
+  ]);
+  const evidencePool = evidence.filter(usable);
+  log(`RTS scan: ${asks.length} ask hit(s), ${evidencePool.length} evidence hit(s)`);
+
+  let alreadyTracking = 0;
+  const candidates = asks.filter(usable).filter((h) => {
+    if (ledger.get(`${channelId}:${h.ts}`)) {
+      alreadyTracking++; // the live pipeline already owns this one
+      return false;
+    }
+    return true;
+  }).slice(0, SCAN_MAX_CLASSIFY);
 
   // The same ask often appears as several separate messages ("can someone follow
   // up with the Diaz family?" asked three times over a week). Report the WORK
@@ -411,9 +440,28 @@ async function scanChannel(
     return { hit: h, extracted: await extractor.extract(incoming) };
   });
 
+  // For each ask, look for a LATER message proving it was done. This is the same
+  // evidence test the live pipeline uses, applied to search results instead of the
+  // event stream. It is what stops the scan from calling completed work "dropped".
+  const withEvidence = await mapLimit(classified, MODEL_CONCURRENCY, async ({ hit, extracted }) => {
+    if (!extracted) return { hit, extracted, completed: false };
+    const later = evidencePool.filter((e) => Number(e.ts) > Number(hit.ts));
+    for (const e of later) {
+      if (await fulfillment.isEvidenceOfFulfillment(extracted.summary, e.text)) {
+        return { hit, extracted, completed: true };
+      }
+    }
+    return { hit, extracted, completed: false };
+  });
+
+  let completed = 0;
   const byWork = new Map<string, ScanFinding>();
-  for (const { hit: h, extracted } of classified) {
+  for (const { hit: h, extracted, completed: done } of withEvidence) {
     if (!extracted) continue;
+    if (done) {
+      completed++;
+      continue; // asked, and later proved finished. Not dropped.
+    }
 
     const key = extracted.summary.toLowerCase().replace(/\s+/g, " ").trim();
     const seen = byWork.get(key);
@@ -431,7 +479,7 @@ async function scanChannel(
       occurrences: 1,
     });
   }
-  return [...byWork.values()];
+  return { open: [...byWork.values()], completed, alreadyTracking };
 }
 
 app.event("app_mention", async ({ event, client, context, say }) => {
@@ -449,16 +497,28 @@ app.event("app_mention", async ({ event, client, context, say }) => {
 
   if (/\bscan\b/i.test(text)) {
     await say({ text: "Searching this channel's past for work that was already dropped...", thread_ts: threadTs });
-    const found = await scanChannel(c, channelId, actionToken, botUserId);
+    const { open, completed, alreadyTracking } = await scanChannel(c, channelId, actionToken, botUserId);
 
-    if (found.length === 0) {
-      await say({
-        text: `I searched the last ${SCAN_LOOKBACK_DAYS} days of this channel with Slack's Real-Time Search. Nothing was dropped: every ask I can find was answered. ✅`,
-        thread_ts: threadTs,
-      });
+    // Say only what was actually checked. "Every ask was answered" is a claim about
+    // evidence, so it is only made when evidence was genuinely found for each one.
+    const context: string[] = [];
+    if (completed) context.push(`${completed} ask${completed === 1 ? " that was" : "s that were"} later proved finished`);
+    if (alreadyTracking) context.push(`${alreadyTracking} I'm already tracking`);
+    const aside = context.length ? ` I also saw ${context.join(", and ")}.` : "";
+
+    const disclaimer =
+      `_Read-only briefing. Slack's Real-Time Search terms forbid storing retrieved data, so I keep none of this. ` +
+      `Anything raised again in this channel, I'll start tracking for real._`;
+
+    if (open.length === 0) {
+      const nothing = completed || alreadyTracking
+        ? `I searched the last ${SCAN_LOOKBACK_DAYS} days of this channel with Slack's Real-Time Search. Nothing is dropped.${aside} ✅`
+        : `I searched the last ${SCAN_LOOKBACK_DAYS} days of this channel with Slack's Real-Time Search and couldn't find any asks at all.`;
+      await say({ text: `${nothing}\n\n${disclaimer}`, thread_ts: threadTs });
       return;
     }
-    const lines = found.slice(0, SCAN_MAX_REPORTED).map((f) => {
+
+    const lines = open.slice(0, SCAN_MAX_REPORTED).map((f) => {
       const who = f.ownerId ? `promised by <@${f.ownerId}>` : "*nobody ever claimed it*";
       const again = f.occurrences > 1 ? ` · asked ${f.occurrences} times` : "";
       const link = f.permalink ? ` · <${f.permalink}|jump>` : "";
@@ -467,9 +527,8 @@ app.event("app_mention", async ({ event, client, context, say }) => {
     await say({
       text:
         `I searched the last ${SCAN_LOOKBACK_DAYS} days of this channel with Slack's Real-Time Search and found ` +
-        `*${found.length} open loop${found.length === 1 ? "" : "s"}* from before I was even watching:\n${lines.join("\n")}\n\n` +
-        `_Read-only briefing: Slack's Real-Time Search terms forbid storing retrieved data, so I keep none of this. ` +
-        `Anything raised again in this channel, I'll start tracking for real._`,
+        `*${open.length} open loop${open.length === 1 ? "" : "s"}* with no sign the work was ever done, ` +
+        `from before I was even watching:\n${lines.join("\n")}\n${aside ? `\n_${aside.trim()}_\n` : ""}\n${disclaimer}`,
       thread_ts: threadTs,
     });
     return;
