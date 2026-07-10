@@ -69,6 +69,7 @@ export class Ledger {
       status: initial,
       createdAt: now,
       updatedAt: now,
+      ...(initial === "UNOWNED" ? { unownedAt: now } : {}),
       history: [{ at: now, from: null, to: initial, reason: "admitted" }],
     };
     this.items.set(id, loop);
@@ -100,7 +101,9 @@ export class Ledger {
         if (loop.snoozeUntil == null || now < loop.snoozeUntil) return null;
         return loop.ownerId ? "CLAIMED" : "UNOWNED";
       case "UNOWNED":
-        return now >= loop.createdAt + this.cfg.responseSlaMs ? "ESCALATED" : null;
+        // Anchored to when it last became UNOWNED, not to createdAt. Otherwise a
+        // loop snoozed for a week escalates the instant it wakes up.
+        return now >= (loop.unownedAt ?? loop.createdAt) + this.cfg.responseSlaMs ? "ESCALATED" : null;
       case "CLAIMED":
         return loop.dueAt != null && now >= loop.dueAt ? "DUE" : null;
       case "DUE":
@@ -144,10 +147,19 @@ export class Ledger {
     return this.apply(id, "SNOOZED", now, `snooze-until:${until}`);
   }
 
+  /**
+   * Once a loop is verified done or dismissed as noise, it is settled. A stale
+   * Block Kit card is still clickable long after the fact, and a late tap must not
+   * resurrect closed work. BROKEN is deliberately NOT final: a human may still
+   * pick a dropped loop back up and mark it done.
+   */
+  private static readonly FINAL: LoopStatus[] = ["FULFILLED", "DISMISSED"];
+
   private apply(id: string, to: LoopStatus, now: number, reason: string): Loop | undefined {
     const loop = this.items.get(id);
     if (!loop) return undefined;
     if (loop.status === to) return loop;
+    if (Ledger.FINAL.includes(loop.status)) return loop; // settled; ignore stale clicks
     this.transition(loop, to, now, reason);
     if (to === "ESCALATED") loop.escalatedAt = now;
     return loop;
@@ -155,6 +167,8 @@ export class Ledger {
 
   private transition(loop: Loop, to: LoopStatus, now: number, reason: string) {
     loop.history.push({ at: now, from: loop.status, to, reason });
+    // Restart the response-SLA clock whenever the loop (re)enters UNOWNED.
+    if (to === "UNOWNED") loop.unownedAt = now;
     loop.status = to;
     loop.updatedAt = now;
   }

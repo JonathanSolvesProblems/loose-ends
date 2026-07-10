@@ -46,6 +46,8 @@ const app = new App({
 const cardRefs = new Map<string, { channel: string; ts: string }>();
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OPEN: LoopStatus[] = ["UNOWNED", "CLAIMED", "DUE", "ESCALATED"];
+/** Statuses a loop never comes back from, so its card can be forgotten. */
+const DONE_WITH: LoopStatus[] = ["FULFILLED", "BROKEN", "DISMISSED"];
 /** Max simultaneous model requests triggered by one Slack message or one scan. */
 const MODEL_CONCURRENCY = 4;
 
@@ -143,8 +145,10 @@ async function resolveCard(client: WebClient, loopId: string, headline: string, 
 
   // A verified, broken, or dismissed loop will never be re-rendered, so stop
   // holding its message coordinates. Long-running agents should not grow forever.
+  // SNOOZED is NOT terminal: it wakes back up and needs its card again, so it must
+  // keep its coordinates.
   const loop = ledger.get(loopId);
-  if (loop && !OPEN.includes(loop.status)) cardRefs.delete(loopId);
+  if (loop && DONE_WITH.includes(loop.status)) cardRefs.delete(loopId);
 }
 
 /**

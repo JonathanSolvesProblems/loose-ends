@@ -119,6 +119,46 @@ test("dismiss and snooze behave as designed", () => {
   assert.equal(l.get("C1:2")?.status, "DISMISSED");
 });
 
+test("waking from a long snooze restarts the response clock, it does not escalate instantly", () => {
+  // The SLA is 1000ms. Snooze an unowned ask for far longer than that. When it
+  // wakes it must get a fresh window to be claimed, not escalate on the same tick
+  // just because createdAt is ancient.
+  const l = new Ledger(CFG);
+  l.admit(request(), src("1"), 0);
+  l.snooze("C1:1", 50_000, 0);
+
+  const woke = l.tick(50_000);
+  assert.equal(woke[0].status, "UNOWNED", "wakes unowned, not escalated");
+
+  assert.equal(l.tick(50_500).length, 0, "still inside its fresh response window");
+  assert.equal(l.tick(51_000)[0].status, "ESCALATED", "escalates a full SLA after waking");
+});
+
+test("a settled loop ignores stale clicks", () => {
+  // A Block Kit card stays clickable forever. A late tap must not resurrect work
+  // that was already verified done, or un-dismiss something judged to be noise.
+  const l = new Ledger(CFG);
+  l.admit(request(), src("1"), 0);
+  l.markFulfilled("C1:1", 100);
+  l.claim("C1:1", "U_LATE", 200);
+  assert.equal(l.get("C1:1")?.status, "FULFILLED", "a stale claim cannot reopen verified work");
+
+  l.admit(request(), src("2"), 0);
+  l.dismiss("C1:2", 100);
+  l.snooze("C1:2", 5000, 200);
+  assert.equal(l.get("C1:2")?.status, "DISMISSED");
+});
+
+test("BROKEN is not final: a human can still close a dropped loop", () => {
+  const l = new Ledger(CFG);
+  l.admit(commitment(1000), src("1"), 0);
+  l.tick(2001); // -> ESCALATED
+  l.tick(3002); // -> BROKEN
+  assert.equal(l.get("C1:1")?.status, "BROKEN");
+  l.markFulfilled("C1:1", 4000, "reviewer:picked-it-back-up");
+  assert.equal(l.get("C1:1")?.status, "FULFILLED");
+});
+
 test("every transition is recorded in the audit history", () => {
   const l = new Ledger(CFG);
   l.admit(request(), src("1"), 0);

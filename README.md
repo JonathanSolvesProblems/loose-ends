@@ -92,21 +92,21 @@ what it is for: an on-demand lookup.
 ```mermaid
 flowchart TD
     A[Slack workspace] -->|Events API message.channels<br/>push, real-time| B[Ingest]
-    B -->|deterministic noise filter| C{LLM: OpenAI / Claude<br/>request vs commitment<br/>owner? deadline?}
+    B -->|deterministic noise filter| C{LLM: gpt-4o-mini<br/>request vs commitment<br/>owner? deadline?}
     C -->|ExtractedLoop| D[Deterministic ledger<br/>ownership + SLA timers + escalation]
     D -->|UNOWNED / DUE / ESCALATED| E[Block Kit card<br/>Claim / Done / Snooze / Dismiss]
-    E -->|approved action only| F[Governed write-back<br/>chat.postEphemeral / Slack List]
+    E -->|approved action only| F[Governed write-back<br/>chat.postMessage / Slack List]
     A -->|later 'done' message| G[Fulfillment detector<br/>evidence, not a timer]
     G -->|verified| D
-    H[Coordinator @-mention] -->|action_token| I[RTS assistant.search.context<br/>'what's still open here?']
+    H[Coordinator @-mention] -->|action_token| I[RTS assistant.search.context<br/>finds work dropped BEFORE install<br/>read-only, nothing stored]
     D --> I
 ```
 
 - **Events API** = the eyes. A real-time push stream, not throttled the way
   channel history is. This is how the agent sees every message.
-- **LLM (Slack AI, bring-your-own-model)** = the judgment. A real OpenAI or Claude
-  call classifies request vs commitment, owner, deadline — the nuance a regex
-  cannot make.
+- **LLM** = the judgment. A real model call classifies request vs commitment,
+  owner, and deadline: the nuance a regex cannot make. The layer is
+  OpenAI-compatible, so it also runs against a local endpoint.
 - **Deterministic ledger** = the spine. Ownership, SLA timers, escalation,
   dedupe, and a full audit log. Reproducible and independent of what the model
   said.
@@ -124,7 +124,7 @@ flowchart TD
 
 ### Deterministic vs generative split
 
-The generative layer (your LLM — OpenAI or Claude) only classifies and extracts,
+The generative layer (the LLM) only classifies and extracts,
 and confirms fulfillment evidence. Every *status* decision — ownership, escalation timers,
 break, dedupe — is deterministic, reproducible, and logged. That is what makes
 the escalation trustworthy and the behavior auditable, and it is what a
@@ -204,8 +204,8 @@ label, and it is the safe direction to fail in.
 src/types.ts          domain types (platform-agnostic)
 src/ledger.ts         deterministic open-loop state machine + escalation   <- the moat
 src/dates.ts          natural-language deadline grounding (pure, tested)
-src/extractor.ts      noise pre-filter + Claude / heuristic extraction
-src/llm.ts            real LLM calls (OpenAI or Claude): classify + confirm fulfillment
+src/extractor.ts      noise pre-filter + LLM / heuristic extraction
+src/llm.ts            real LLM calls: classify + confirm fulfillment evidence
 src/fulfillment.ts    evidence-based fulfillment detection from the stream
 src/actions.ts        Block Kit card model + review-gate decisions
 src/watcher.ts        offline message source for the no-workspace demo
@@ -229,7 +229,7 @@ manifest.json         the Slack app manifest (paste into api.slack.com)
    to your sandbox.
 3. Copy `.env.example` to `.env` and fill in the three Slack credentials
    (`SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `SLACK_SIGNING_SECRET`), an LLM key
-   (`OPENAI_API_KEY` *or* `ANTHROPIC_API_KEY` — bring-your-own-model), plus
+   (`OPENAI_API_KEY`), plus
    `LOOSE_ENDS_COORDINATOR` (the backup human's user id) and optionally
    `LOOSE_ENDS_CHANNELS`.
 4. `npm install`
@@ -360,5 +360,5 @@ version of a statistic turned out to be wrong, the accurate one is used instead.
   (`chat.postEphemeral`, optional `slackLists.items.create`) directly.
 - **"Slack AI" is bring-your-own-model.** There is no Slack-hosted LLM for
   developers and the challenge requires no specific vendor; the extractor calls
-  your model (OpenAI `gpt-4o-mini` by default, or Claude) with your key. A local
+  your model (`gpt-4o-mini` by default) with your key. A local
   OpenAI-compatible endpoint (e.g. Ollama) works too, for a zero-cost/offline run.

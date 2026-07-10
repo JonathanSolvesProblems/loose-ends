@@ -89,6 +89,11 @@ export interface Loop extends ExtractedLoop {
   updatedAt: number;
   /** Set when the loop is escalated; drives the ESCALATED -> BROKEN timer. */
   escalatedAt?: number;
+  /**
+   * When the loop (re)entered UNOWNED. The response-SLA clock runs from here, not
+   * from createdAt, so waking from a long snooze does not escalate instantly.
+   */
+  unownedAt?: number;
   /** Set when SNOOZED: epoch ms to reopen. */
   snoozeUntil?: number;
   /** Audit log of every transition, oldest first. */
