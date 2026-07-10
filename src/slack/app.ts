@@ -48,6 +48,46 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const OPEN: LoopStatus[] = ["UNOWNED", "CLAIMED", "DUE", "ESCALATED"];
 /** Statuses a loop never comes back from, so its card can be forgotten. */
 const DONE_WITH: LoopStatus[] = ["FULFILLED", "BROKEN", "DISMISSED"];
+
+/**
+ * A running tally of what the agent has actually done, so there is a real number
+ * to point at rather than only the offline eval figures. `/looseends stats` reports
+ * it. In memory, so it counts from the current process start; a redeploy resets it,
+ * which is disclosed. The headline lines are the ones that describe outcomes in the
+ * world: unowned asks caught, loops closed on evidence, and loops broken with no
+ * proof.
+ */
+const stats = {
+  since: Date.now(),
+  unownedCaught: 0,
+  commitmentsTracked: 0,
+  escalated: 0,
+  claimed: 0,
+  verifiedOnEvidence: 0,
+  markedDoneByHuman: 0,
+  brokenNoProof: 0,
+  dismissed: 0,
+  scans: 0,
+};
+
+function statsReport(): string {
+  const hours = (Date.now() - stats.since) / (60 * 60 * 1000);
+  const window = hours < 48 ? `${Math.max(1, Math.round(hours))}h` : `${Math.round(hours / 24)}d`;
+  const tracked = stats.unownedCaught + stats.commitmentsTracked;
+  if (tracked === 0) {
+    return `I've been watching for about ${window} and haven't had to track anything yet. That silence is the point: I only speak up when a real ask is at risk.`;
+  }
+  const lines = [
+    `*${stats.unownedCaught}* unowned asks caught (nobody had accepted them)`,
+    `*${stats.commitmentsTracked}* commitments tracked`,
+    `*${stats.escalated}* escalated to a backup human`,
+    `*${stats.verifiedOnEvidence}* closed on real evidence in the channel, not a timer`,
+    `*${stats.brokenNoProof}* flagged BROKEN: a deadline passed with no proof the work happened`,
+  ];
+  if (stats.markedDoneByHuman) lines.push(`*${stats.markedDoneByHuman}* marked done by a person at the review gate`);
+  if (stats.scans) lines.push(`*${stats.scans}* channel scans for work dropped before I was installed`);
+  return `In about ${window} of watching:\n${lines.map((l) => `• ${l}`).join("\n")}`;
+}
 /** Max simultaneous model requests triggered by one Slack message or one scan. */
 const MODEL_CONCURRENCY = 4;
 
@@ -179,11 +219,12 @@ async function detectFulfillment(client: WebClient, incoming: IncomingMessage, n
   for (const { loop, isEvidence } of results) {
     if (!isEvidence) continue;
     ledger.markFulfilled(loop.id, now, `evidence:${incoming.ts}`);
+    stats.verifiedOnEvidence++;
     log(`  ✓ VERIFIED on evidence: ${preview(loop.summary)}`);
     await resolveCard(
       client,
       loop.id,
-      "✅ Verified — closed on evidence",
+      "✅ Verified, closed on evidence",
       `"${loop.summary}"`,
       "A later message in this channel showed the work actually landed. Closed on evidence, not because a timer ran out.",
     );
@@ -239,7 +280,11 @@ app.message(async ({ message, client, context }) => {
       return;
     }
     const loop = ledger.admit(extracted, incoming, now);
-    if (loop) log(`  → ${loop.kind} ${loop.status}: ${preview(loop.summary)}`);
+    if (loop) {
+      if (loop.status === "UNOWNED") stats.unownedCaught++;
+      else if (loop.status === "CLAIMED") stats.commitmentsTracked++;
+      log(`  → ${loop.kind} ${loop.status}: ${preview(loop.summary)}`);
+    }
     // Surface an unowned request immediately so the channel can claim it; owned
     // commitments stay silent until they come due.
     if (loop && loop.status === "UNOWNED") await upsertCard(c, loop);
@@ -276,6 +321,7 @@ app.action(/^loose_ends_review:/, async ({ ack, body, action, client, respond })
 
   if (dec.kind === "claim") {
     const loop = ledger.claim(dec.loopId, userId, now);
+    stats.claimed++;
     await resolveCard(
       c,
       dec.loopId,
@@ -285,6 +331,7 @@ app.action(/^loose_ends_review:/, async ({ ack, body, action, client, respond })
     );
   } else if (dec.kind === "approve") {
     const loop = ledger.markFulfilled(dec.loopId, now, `reviewer:${userId}`);
+    stats.markedDoneByHuman++;
     await writeToList(c, loop);
     await resolveCard(
       c,
@@ -298,7 +345,8 @@ app.action(/^loose_ends_review:/, async ({ ack, body, action, client, respond })
     await resolveCard(c, dec.loopId, "Snoozed", "I'll bring this back tomorrow if it's still open.");
   } else if (dec.kind === "dismiss") {
     ledger.dismiss(dec.loopId, now);
-    await resolveCard(c, dec.loopId, "Dismissed", "Not a real loop.", "Thanks — that feedback is what tunes the filter.");
+    stats.dismissed++;
+    await resolveCard(c, dec.loopId, "Dismissed", "Not a real loop.", "Thanks, that feedback is what tunes the filter.");
   }
 });
 
@@ -321,14 +369,16 @@ function ledgerAnswer(channelId: string): string {
   if (open.length === 0) return "Nothing open here right now. Every loop I'm tracking has been claimed or verified. ✅";
   const lines = open.map((l) => {
     const owner = l.ownerId ? `owned by <@${l.ownerId}>` : "*unowned*";
-    return `• [${l.status}] "${l.summary}" — ${owner}`;
+    return `• [${l.status}] "${l.summary}" (${owner})`;
   });
   return `Still open in this channel:\n${lines.join("\n")}`;
 }
 
 app.command("/looseends", async ({ ack, command, respond }) => {
   await ack();
-  await respond({ response_type: "ephemeral", text: ledgerAnswer(command.channel_id) });
+  const arg = (command.text || "").trim().toLowerCase();
+  const text = arg.startsWith("stat") ? statsReport() : ledgerAnswer(command.channel_id);
+  await respond({ response_type: "ephemeral", text });
 });
 
 /** How far back a retroactive scan looks. */
@@ -502,6 +552,7 @@ app.event("app_mention", async ({ event, client, context, say }) => {
 
   if (/\bscan\b/i.test(text)) {
     await say({ text: "Searching this channel's past for work that was already dropped...", thread_ts: threadTs });
+    stats.scans++;
     const { open, completed, alreadyTracking } = await scanChannel(c, channelId, actionToken, botUserId);
 
     // Say only what was actually checked. "Every ask was answered" is a claim about
@@ -555,9 +606,11 @@ setInterval(async () => {
   for (const loop of ledger.tick(now)) {
     log(`tick → ${loop.status}: ${preview(loop.summary)}`);
     try {
+      if (loop.status === "ESCALATED") stats.escalated++;
       if (loop.status === "DUE" || loop.status === "ESCALATED") {
         await upsertCard(app.client as WebClient, loop);
       } else if (loop.status === "BROKEN") {
+        stats.brokenNoProof++;
         // Say exactly why it broke. The ledger guarantees a loop with a deadline
         // can't break before that deadline, so this copy is always true.
         const who = loop.ownerId ? `<@${loop.ownerId}> took this on and` : "Nobody ever claimed this,";
@@ -565,7 +618,7 @@ setInterval(async () => {
         await resolveCard(
           app.client as WebClient,
           loop.id,
-          "🔴 Dropped — this never got done",
+          "🔴 Dropped, this never got done",
           `"${loop.summary}"\n${who} ${when}, and no message in this channel ever showed the work happened.`,
           "A deadline passing is not evidence. Loose Ends refuses to quietly mark this done, so a human can pick it back up.",
         );

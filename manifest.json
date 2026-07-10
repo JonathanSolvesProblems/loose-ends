@@ -20,8 +20,8 @@
     "slash_commands": [
       {
         "command": "/looseends",
-        "description": "Show open loops still tracked in this channel",
-        "usage_hint": "[open | mine]",
+        "description": "Show open loops in this channel, or 'stats' for the running tally",
+        "usage_hint": "[open | stats]",
         "should_escape": false
       }
     ]
