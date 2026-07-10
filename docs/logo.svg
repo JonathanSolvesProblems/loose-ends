@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#20513d"/>
+      <stop offset="100%" stop-color="#0b1d15"/>
+    </linearGradient>
+    <linearGradient id="thread" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0%" stop-color="#a3e7be"/>
+      <stop offset="100%" stop-color="#44a172"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="114" fill="url(#bg)"/>
+
+  <!--
+    One continuous thread. It ALMOST closes into a loop, then the end escapes and
+    trails away, unfinished. The narrow gap and the hanging end are the product:
+    work that came within an inch of being finished, and the piece still dangling.
+    The frayed tip is amber because that is the thing Loose Ends goes and catches.
+    The whole mark is tilted so it never reads as a letter.
+  -->
+  <g transform="rotate(-20 256 256)">
+    <g fill="none" stroke-linecap="round" stroke-width="44">
+      <!-- the loop: ~304 degrees, leaving a narrow, deliberate gap -->
+      <path d="M 349 173 A 126 126 0 1 0 349 291" stroke="url(#thread)"/>
+      <!-- the loose end: slips through the gap, curves out, and simply stops -->
+      <path d="M 349 291 C 392 330, 406 364, 393 404" stroke="url(#thread)"/>
+    </g>
+    <!-- the frayed tip: where the work stopped -->
+    <circle cx="393" cy="404" r="28" fill="#e89552"/>
+  </g>
+</svg>
