@@ -20,13 +20,13 @@ Ends during the window, so you can quote a concrete number in the "Impact" and
 
 - unowned asks caught · escalated to a backup · claimed · **loops that hit their
   deadline with no evidence of completion** (the "closed ≠ done" catch)
-- false positives (should be near zero — that's the restraint story)
+- false positives (should be near zero, that's the restraint story)
 
 ---
 
 ## 1. Warm DM (someone you know at a nonprofit / mutual-aid org)
 
-> Hey [name] — I built a small Slack agent for exactly the thing your team
+> Hey [name], I built a small Slack agent for exactly the thing your team
 > deals with: asks that scroll past in a busy channel and nobody picks up, so a
 > follow-up quietly drops. It flags an ask nobody accepted, nudges the channel,
 > and if it still sits there, escalates it to a backup person. And it only marks
@@ -39,7 +39,7 @@ Ends during the window, so you can quote a concrete number in the "Impact" and
 
 ## 2. Short email (a program or ops lead)
 
-> Subject: a 5-minute favor — catching dropped follow-ups in your Slack
+> Subject: a 5-minute favor, catching dropped follow-ups in your Slack
 >
 > Hi [name],
 >
@@ -65,22 +65,22 @@ Ends during the window, so you can quote a concrete number in the "Impact" and
 > nobody accepted and escalates them to a backup person before they drop, and it
 > verifies work got done from the actual conversation instead of trusting a
 > deadline. Built it for the Slack "Agent for Good" hackathon. Looking for 3–5
-> small teams to try it in one channel this week and tell me if it's useful — DM
+> small teams to try it in one channel this week and tell me if it's useful, DM
 > me and I'll get you set up in a few minutes.
 
 ## 4. Hackathon channel (#slack-agent-builder-challenge)
 
-> Building "Loose Ends" (Agent for Good) — it catches unowned asks in a channel
+> Building "Loose Ends" (Agent for Good), it catches unowned asks in a channel
 > and only marks them done on evidence the work landed, not a timer. If anyone
 > runs a small mission-driven Slack (nonprofit, mutual-aid, community health) and
-> would pilot it in one channel for a few days, I'd love the real-world feedback —
+> would pilot it in one channel for a few days, I'd love the real-world feedback , 
 > reply or DM.
 
 ---
 
 ## Notes
 
-- Keep it to **one channel** for the pilot — lower friction, cleaner numbers.
+- Keep it to **one channel** for the pilot, lower friction, cleaner numbers.
 - Run in normal mode for real timing; use `LOOSE_ENDS_DEMO=1` only for the video.
 - If someone's nervous about privacy, the honest answer: it watches only the
   channel you invite it to, stores derived loop state (not a message archive), and

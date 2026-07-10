@@ -125,8 +125,8 @@ flowchart TD
 ### Deterministic vs generative split
 
 The generative layer (the LLM) only classifies and extracts,
-and confirms fulfillment evidence. Every *status* decision — ownership, escalation timers,
-break, dedupe — is deterministic, reproducible, and logged. That is what makes
+and confirms fulfillment evidence. Every *status* decision (ownership, escalation timers,
+break, dedupe) is deterministic, reproducible, and logged. That is what makes
 the escalation trustworthy and the behavior auditable, and it is what a
 prompt-only clone lacks.
 
@@ -154,7 +154,7 @@ fires on (*"I'll be out Friday"*). On that 48-message frontline corpus:
 | Extractor | Precision | Recall | False-positive rate | Kind accuracy |
 | --- | --- | --- | --- | --- |
 | Regex clone (`npm run eval`) | 76.5% | 52.0% | 17.4% | 100% |
-| **LLM extractor** — OpenAI `gpt-4o-mini` (`npm run eval:llm`) | **92.6%** | **100%** | **8.7%** | **100%** |
+| **LLM extractor**, OpenAI `gpt-4o-mini` (`npm run eval:llm`) | **92.6%** | **100%** | **8.7%** | **100%** |
 
 The delta is the argument: the AI takes **recall from 52% to 100%**, catching
 every dropped ask a keyword filter cannot see, while **halving the false-positive
@@ -250,15 +250,15 @@ npm test       # ledger / dates / extractor unit tests
 
 The offline demo tells the whole story in four beats:
 
-- **CLAIMED** — an unowned "follow up with the Diaz family" request escalates when
+- **CLAIMED**: an unowned "follow up with the Diaz family" request escalates when
   nobody claims it, then a coordinator claims it (the rescue).
-- **BROKEN** — a grant-report commitment passes its deadline, grace, and escalation
+- **BROKEN**: a grant-report commitment passes its deadline, grace, and escalation
   with no evidence of completion. Every commitment bot would mark this done; Loose
   Ends flags it broken (closed is not done).
-- **FULFILLED** — an Okafor clinic-confirmation request is claimed by a volunteer,
+- **FULFILLED**: an Okafor clinic-confirmation request is claimed by a volunteer,
   and later a "confirmed, all set" message in the channel closes it on *evidence*,
   not a timer.
-- **Silence** — "we should grab lunch" and "I'll think about it" never enter the
+- **Silence**: "we should grab lunch" and "I'll think about it" never enter the
   ledger. That is the negative control.
 
 ## ~90-second demo script
@@ -270,13 +270,13 @@ The offline demo tells the whole story in four beats:
    accepted, distinct from a personal promise someone forgot) and asks the channel
    to claim it. The response window passes, still nothing, so it escalates to the
    program's backup coordinator: "Nobody has picked this up." She clicks **Claim**.
-3. **The flagship — evidence, not a timer.** Two days later someone posts "closed
-   out the Diaz housing case." The card flips to **Verified** — Loose Ends found
+3. **The flagship, evidence not a timer.** Two days later someone posts "closed
+   out the Diaz housing case." The card flips to **Verified**. Loose Ends found
    that message and closed the loop on evidence.
 4. **"Closed is not done."** A second commitment's deadline passes with no
    completion message. Every commitment bot marks this done. Loose Ends keeps it
    **open**, then BROKEN, on the dashboard.
-5. **Negative control.** "we should grab lunch" and "I'll think about it" — the
+5. **Negative control.** "we should grab lunch" and "I'll think about it": the
    agent stays silent. Put the false-positive rate on screen. Close on the 38%.
 
 ## Honest limitations and path to production
@@ -353,7 +353,7 @@ version of a statistic turned out to be wrong, the accurate one is used instead.
 
 - **RTS is pull, not push.** `assistant.search.context` is meant to be called in
   response to a user interaction, needs an ephemeral `action_token`, and forbids
-  storing results — so it cannot be a background channel scanner. Ingestion is the
+  storing results, so it cannot be a background channel scanner. Ingestion is the
   Events API; RTS is the on-demand lookup.
 - **The MCP write-back has no Lists tool.** Slack's hosted MCP server exposes
   message/canvas writes only, so governed write-back uses the Web API
