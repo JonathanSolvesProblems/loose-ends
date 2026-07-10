@@ -10,23 +10,27 @@
     </linearGradient>
   </defs>
 
-  <rect width="512" height="512" rx="114" fill="url(#bg)"/>
+  <!--
+    FULL-BLEED square, deliberately no rounded corners. Slack applies its own mask
+    (rounded square in the app listing, a circle for the bot avatar), so any rounding
+    baked in here would expose the page background as white corners.
+  -->
+  <rect width="512" height="512" fill="url(#bg)"/>
 
   <!--
     One continuous thread. It ALMOST closes into a loop, then the end escapes and
     trails away, unfinished. The narrow gap and the hanging end are the product:
     work that came within an inch of being finished, and the piece still dangling.
     The frayed tip is amber because that is the thing Loose Ends goes and catches.
-    The whole mark is tilted so it never reads as a letter.
+    Tilted so it never reads as a letter, and scaled to survive a circular crop.
   -->
-  <g transform="rotate(-20 256 256)">
-    <g fill="none" stroke-linecap="round" stroke-width="44">
-      <!-- the loop: ~304 degrees, leaving a narrow, deliberate gap -->
-      <path d="M 349 173 A 126 126 0 1 0 349 291" stroke="url(#thread)"/>
-      <!-- the loose end: slips through the gap, curves out, and simply stops -->
-      <path d="M 349 291 C 392 330, 406 364, 393 404" stroke="url(#thread)"/>
+  <g transform="translate(256 256) scale(0.84) translate(-256 -256)">
+    <g transform="rotate(-20 256 256)">
+      <g fill="none" stroke-linecap="round" stroke-width="44">
+        <path d="M 349 173 A 126 126 0 1 0 349 291" stroke="url(#thread)"/>
+        <path d="M 349 291 C 392 330, 406 364, 393 404" stroke="url(#thread)"/>
+      </g>
+      <circle cx="393" cy="404" r="28" fill="#e89552"/>
     </g>
-    <!-- the frayed tip: where the work stopped -->
-    <circle cx="393" cy="404" r="28" fill="#e89552"/>
   </g>
 </svg>

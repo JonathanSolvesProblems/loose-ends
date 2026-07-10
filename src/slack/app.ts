@@ -397,35 +397,28 @@ async function scanChannel(
     h.authorId !== botUserId &&
     !(botUserId && h.text.includes(`<@${botUserId}>`)); // commands, not work
 
-  // Two searches, run in sequence because the action_token is ephemeral and
-  // per-interaction: one for what was asked, one for what was reported finished.
-  // Without evidence, the scan reports already-completed work as dropped every time
-  // the in-memory ledger is empty, which is after every restart.
-  const asks = await searchContext(client, {
+  // ONE search per interaction. A second assistant.search.context call reusing the
+  // same action_token returned zero results on every attempt, which is consistent
+  // with the token being single-use, and it burns a request against a ~10/min limit
+  // either way. One search is enough: the hits already carry the surrounding
+  // conversation, so the completion message sits in the same result set as the ask.
+  const hits = await searchContext(client, {
     actionToken,
-    query: "requests, asks, action items, or promises that were never completed",
-    channelId,
-    afterEpochSec,
-    limit: SCAN_MAX_CLASSIFY,
-  });
-  const reports = await searchContext(client, {
-    actionToken,
-    query: "messages reporting that work was completed, finished, sent, filed, closed, delivered, or handled",
+    query: "requests, asks, action items, or promises, and messages reporting work finished",
     channelId,
     afterEpochSec,
     limit: SCAN_MAX_CLASSIFY,
   });
 
-  // EVERY message either search returned is a candidate piece of evidence, not just
-  // the ones the evidence query happened to rank. A semantic query for "work was
-  // completed" can easily miss "the Diaz family has their voucher now", and it can
-  // just as easily match only the agent's own cards, which is exactly what happened
-  // the first time. Pooling both result sets removes that dependency on phrasing.
-  const evidencePool = dedupeByTs([...asks, ...reports]).filter(usable);
-  log(`RTS scan: asks=${asks.length}, reports=${reports.length}, evidence pool=${evidencePool.length}`);
+  // EVERY returned message is a candidate piece of evidence, not just the ones a
+  // completion-flavoured query would rank. Real evidence is often oblique ("the Diaz
+  // family has their voucher now"), which is exactly why the verifier gates on
+  // subject overlap rather than keywords. Phrase-matching for completion failed live.
+  const evidencePool = dedupeByTs(hits).filter(usable);
+  log(`RTS scan: ${hits.length} hit(s), evidence pool=${evidencePool.length}`);
 
   let alreadyTracking = 0;
-  const candidates = asks.filter(usable).filter((h) => {
+  const candidates = evidencePool.filter((h) => {
     if (ledger.get(`${channelId}:${h.ts}`)) {
       alreadyTracking++; // the live pipeline already owns this one
       return false;
