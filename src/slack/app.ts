@@ -347,6 +347,13 @@ interface ScanFinding {
   occurrences: number;
 }
 
+/** The same message can be returned by both searches. Keep one copy of each. */
+function dedupeByTs(hits: RtsHit[]): RtsHit[] {
+  const seen = new Map<string, RtsHit>();
+  for (const h of hits) if (!seen.has(h.ts)) seen.set(h.ts, h);
+  return [...seen.values()];
+}
+
 /** What a briefing found. Only `open` is dropped work; the rest is context. */
 interface ScanResult {
   open: ScanFinding[];
@@ -390,27 +397,32 @@ async function scanChannel(
     h.authorId !== botUserId &&
     !(botUserId && h.text.includes(`<@${botUserId}>`)); // commands, not work
 
-  // Two searches: what was asked, and what was reported finished. Without the
-  // second, the scan would report already-completed work as dropped every time the
-  // in-memory ledger is empty, which is after every restart.
-  const [asks, evidence] = await Promise.all([
-    searchContext(client, {
-      actionToken,
-      query: "requests, asks, action items, or promises that were never completed",
-      channelId,
-      afterEpochSec,
-      limit: SCAN_MAX_CLASSIFY,
-    }),
-    searchContext(client, {
-      actionToken,
-      query: "messages reporting that work was completed, finished, sent, filed, closed, delivered, or handled",
-      channelId,
-      afterEpochSec,
-      limit: SCAN_MAX_CLASSIFY,
-    }),
-  ]);
-  const evidencePool = evidence.filter(usable);
-  log(`RTS scan: ${asks.length} ask hit(s), ${evidencePool.length} evidence hit(s)`);
+  // Two searches, run in sequence because the action_token is ephemeral and
+  // per-interaction: one for what was asked, one for what was reported finished.
+  // Without evidence, the scan reports already-completed work as dropped every time
+  // the in-memory ledger is empty, which is after every restart.
+  const asks = await searchContext(client, {
+    actionToken,
+    query: "requests, asks, action items, or promises that were never completed",
+    channelId,
+    afterEpochSec,
+    limit: SCAN_MAX_CLASSIFY,
+  });
+  const reports = await searchContext(client, {
+    actionToken,
+    query: "messages reporting that work was completed, finished, sent, filed, closed, delivered, or handled",
+    channelId,
+    afterEpochSec,
+    limit: SCAN_MAX_CLASSIFY,
+  });
+
+  // EVERY message either search returned is a candidate piece of evidence, not just
+  // the ones the evidence query happened to rank. A semantic query for "work was
+  // completed" can easily miss "the Diaz family has their voucher now", and it can
+  // just as easily match only the agent's own cards, which is exactly what happened
+  // the first time. Pooling both result sets removes that dependency on phrasing.
+  const evidencePool = dedupeByTs([...asks, ...reports]).filter(usable);
+  log(`RTS scan: asks=${asks.length}, reports=${reports.length}, evidence pool=${evidencePool.length}`);
 
   let alreadyTracking = 0;
   const candidates = asks.filter(usable).filter((h) => {
