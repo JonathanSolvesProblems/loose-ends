@@ -249,7 +249,7 @@ app.message(async ({ message, client, context }) => {
 });
 
 // --- Review gate: the only path that changes ownership / closes a loop --------
-app.action(/^loose_ends_review:/, async ({ ack, body, action, client }) => {
+app.action(/^loose_ends_review:/, async ({ ack, body, action, client, respond }) => {
   await ack();
   const dec = decodeAction((action as any).value);
   if (!dec) return;
@@ -257,6 +257,22 @@ app.action(/^loose_ends_review:/, async ({ ack, body, action, client }) => {
   const userId = (body as any).user?.id ?? "someone";
   const c = client as WebClient;
   log(`action: ${dec.kind} on ${dec.loopId} by ${userId}`);
+
+  // A Block Kit card outlives the process that posted it. The ledger is in memory
+  // today, so after a restart or redeploy every older card is a button that would
+  // otherwise do absolutely nothing when tapped. Say so, rather than going silent.
+  if (!ledger.get(dec.loopId)) {
+    log(`  → unknown loop (restarted since this card was posted)`);
+    await respond({
+      response_type: "ephemeral",
+      replace_original: false,
+      text:
+        "I've restarted since I posted that card, so I'm not tracking this loop any more. " +
+        "My ledger lives in memory today, which is the first thing a production deployment would fix. " +
+        "Post the ask again and I'll pick it straight back up.",
+    });
+    return;
+  }
 
   if (dec.kind === "claim") {
     const loop = ledger.claim(dec.loopId, userId, now);
