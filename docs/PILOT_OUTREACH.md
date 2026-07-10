@@ -18,9 +18,11 @@ Ends during the window, so you can quote a concrete number in the "Impact" and
 
 ### What to measure (the quotable line)
 
-- unowned asks caught · escalated to a backup · claimed · **loops that hit their
-  deadline with no evidence of completion** (the "closed ≠ done" catch)
-- false positives (should be near zero, that's the restraint story)
+Run `/looseends stats` in the channel at the end of the pilot. It reports the tally
+directly: unowned asks caught, escalated to a backup, closed on real evidence, and
+**loops that hit their deadline with no evidence of completion** (the "closed is not
+done" catch). Screenshot it. That is your own-data number, and it outweighs the
+borrowed research stat in judging.
 
 ---
 
