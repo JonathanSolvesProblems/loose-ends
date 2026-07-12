@@ -53,12 +53,12 @@ served. The message scrolls away, everyone assumes someone else has it, and
 nobody does.
 
 > **93% of social-services cases were marked "closed." Only 38% actually
-> delivered the service.** Same 83,365 managed cases, drawn from 115,316 referrals
-> across 26 counties (Johnson et al., *JAMA Network Open*, 2024;7(4):e247021). The
-> study measures both rates side by side and names the gap: a case is marked closed
-> "irrespective of whether patients receive a resource." The loop *looked* closed.
-> The person was never served. That 55-point gap is exactly what evidence-based
-> verification is built to catch.
+> delivered the service.** Those are the second-period rates in a study of 115,316
+> referrals across 26 counties, 83,365 of them managed cases (Johnson et al., *JAMA
+> Network Open*, 2024;7(4):e247021). The study tracks both rates side by side and
+> names the gap: a case is marked closed "irrespective of whether patients receive a
+> resource." The loop *looked* closed. The person was never served. That 55-point gap
+> is exactly what evidence-based verification is built to catch.
 >
 > And the person who asked usually never finds out: **25 to 50% of referring
 > physicians did not know whether their patient ever saw the specialist**
@@ -331,9 +331,9 @@ version of a statistic turned out to be wrong, the accurate one is used instead.
    counties (83,365 managed cases), the study reports two rates side by side: the
    closed-loop rate (cases marked closed, "irrespective of whether patients receive
    a resource") and the successful-connection rate (cases whose closure resulted in
-   receipt of a real benefit). In the second period those were **93% and 38%**. The
-   successful-connection rate had fallen from 65%. A referral marked closed is not a
-   service received.
+   receipt of a real benefit). Period 1: 99% and 65%. Period 2: **93% and 38%**. The
+   two rates are measured over the same cases in each period, which is what makes the
+   gap meaningful. A referral marked closed is not a service received.
 2. Berwick DM, Hackbarth AD. Eliminating Waste in US Health Care. *JAMA*
    2012;307(14):1513-1516. Failures of care coordination waste $25-45B/year.
 3. Joint Commission Center for Transforming Healthcare (2012), Hand-off
