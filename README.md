@@ -8,6 +8,15 @@ of a mission-driven team, and it verifies the fix instead of trusting a timer.
 
 **Track:** Slack Agent for Good (nonprofit operations / frontline mission orgs).
 
+## Demo
+
+**[Watch the 90-second demo](https://www.youtube.com/watch?v=ll66-12D5Mo)** (YouTube)
+
+It runs the whole loop on a live workspace: an ask nobody answers, escalation to a
+backup human, the loop closing **on evidence found in a later message**, and the
+opposite case where a deadline passes with no proof and the loop is flagged broken
+instead of quietly marked done.
+
 ## Uniqueness claim (narrow, and checked)
 
 > **Loose Ends is the only Slack-native agent that closes a loop by finding
