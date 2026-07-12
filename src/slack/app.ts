@@ -77,15 +77,16 @@ function statsReport(): string {
   if (tracked === 0) {
     return `I've been watching for about ${window} and haven't had to track anything yet. That silence is the point: I only speak up when a real ask is at risk.`;
   }
+  const s = (n: number, one: string, many: string) => `*${n}* ${n === 1 ? one : many}`;
   const lines = [
-    `*${stats.unownedCaught}* unowned asks caught (nobody had accepted them)`,
-    `*${stats.commitmentsTracked}* commitments tracked`,
-    `*${stats.escalated}* escalated to a backup human`,
-    `*${stats.verifiedOnEvidence}* closed on real evidence in the channel, not a timer`,
-    `*${stats.brokenNoProof}* flagged BROKEN: a deadline passed with no proof the work happened`,
+    `${s(stats.unownedCaught, "unowned ask caught", "unowned asks caught")} (nobody had accepted ${stats.unownedCaught === 1 ? "it" : "them"})`,
+    s(stats.commitmentsTracked, "commitment tracked", "commitments tracked"),
+    `${s(stats.escalated, "escalated", "escalated")} to a backup human`,
+    `${s(stats.verifiedOnEvidence, "closed", "closed")} on real evidence in the channel, not a timer`,
+    `${s(stats.brokenNoProof, "flagged BROKEN", "flagged BROKEN")}: a deadline passed with no proof the work happened`,
   ];
-  if (stats.markedDoneByHuman) lines.push(`*${stats.markedDoneByHuman}* marked done by a person at the review gate`);
-  if (stats.scans) lines.push(`*${stats.scans}* channel scans for work dropped before I was installed`);
+  if (stats.markedDoneByHuman) lines.push(`${s(stats.markedDoneByHuman, "marked", "marked")} done by a person at the review gate`);
+  if (stats.scans) lines.push(s(stats.scans, "channel scan for work dropped before I was installed", "channel scans for work dropped before I was installed"));
   return `In about ${window} of watching:\n${lines.map((l) => `• ${l}`).join("\n")}`;
 }
 /** Max simultaneous model requests triggered by one Slack message or one scan. */
