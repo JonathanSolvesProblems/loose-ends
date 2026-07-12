@@ -553,38 +553,61 @@ app.event("app_mention", async ({ event, client, context, say }) => {
   if (/\bscan\b/i.test(text)) {
     await say({ text: "Searching this channel's past for work that was already dropped...", thread_ts: threadTs });
     stats.scans++;
-    const { open, completed, alreadyTracking } = await scanChannel(c, channelId, actionToken, botUserId);
+    const { open, completed } = await scanChannel(c, channelId, actionToken, botUserId);
 
-    // Say only what was actually checked. "Every ask was answered" is a claim about
-    // evidence, so it is only made when evidence was genuinely found for each one.
-    const context: string[] = [];
-    if (completed) context.push(`${completed} ask${completed === 1 ? " that was" : "s that were"} later proved finished`);
-    if (alreadyTracking) context.push(`${alreadyTracking} I'm already tracking`);
-    const aside = context.length ? ` I also saw ${context.join(", and ")}.` : "";
+    // Work I am ALREADY tracking that has dropped or is dropping. Leaving this out
+    // was a real bug: the briefing said "nothing is dropped" while a red BROKEN card
+    // sat directly above it in the same channel. A loop I broke is still dropped work,
+    // and the person asking deserves to be told about it.
+    const trackedDropped = ledger
+      .all()
+      .filter((l) => l.source.channelId === channelId)
+      .filter((l) => l.status === "BROKEN" || l.status === "ESCALATED");
 
     const disclaimer =
       `_Read-only briefing. Slack's Real-Time Search terms forbid storing retrieved data, so I keep none of this. ` +
       `Anything raised again in this channel, I'll start tracking for real._`;
 
-    if (open.length === 0) {
-      const nothing = completed || alreadyTracking
-        ? `I searched the last ${SCAN_LOOKBACK_DAYS} days of this channel with Slack's Real-Time Search. Nothing is dropped.${aside} ✅`
+    const sections: string[] = [];
+
+    if (open.length) {
+      const lines = open.slice(0, SCAN_MAX_REPORTED).map((f) => {
+        const who = f.ownerId ? `promised by <@${f.ownerId}>` : "*nobody ever claimed it*";
+        const again = f.occurrences > 1 ? ` · asked ${f.occurrences} times` : "";
+        const link = f.permalink ? ` · <${f.permalink}|jump>` : "";
+        return `• "${f.summary}" (${who})${again}${link}`;
+      });
+      sections.push(
+        `*${open.length} open loop${open.length === 1 ? "" : "s"}* with no sign the work was ever done, ` +
+          `from before I was even watching:\n${lines.join("\n")}`,
+      );
+    }
+
+    if (trackedDropped.length) {
+      const lines = trackedDropped.slice(0, SCAN_MAX_REPORTED).map((l) => {
+        const who = l.ownerId ? `<@${l.ownerId}> took it on` : "nobody ever claimed it";
+        const state = l.status === "BROKEN" ? "dropped, deadline passed with no proof" : "escalated, still nobody acting";
+        return `• "${l.summary}" (${who}, ${state})`;
+      });
+      sections.push(
+        `*${trackedDropped.length}* I'm tracking right now that ${trackedDropped.length === 1 ? "has" : "have"} dropped:\n${lines.join("\n")}`,
+      );
+    }
+
+    if (sections.length === 0) {
+      const nothing = completed
+        ? `I searched the last ${SCAN_LOOKBACK_DAYS} days of this channel with Slack's Real-Time Search. Nothing is dropped: ` +
+          `${completed} ask${completed === 1 ? " was" : "s were"} later proved finished. ✅`
         : `I searched the last ${SCAN_LOOKBACK_DAYS} days of this channel with Slack's Real-Time Search and couldn't find any asks at all.`;
       await say({ text: `${nothing}\n\n${disclaimer}`, thread_ts: threadTs });
       return;
     }
 
-    const lines = open.slice(0, SCAN_MAX_REPORTED).map((f) => {
-      const who = f.ownerId ? `promised by <@${f.ownerId}>` : "*nobody ever claimed it*";
-      const again = f.occurrences > 1 ? ` · asked ${f.occurrences} times` : "";
-      const link = f.permalink ? ` · <${f.permalink}|jump>` : "";
-      return `• "${f.summary}" (${who})${again}${link}`;
-    });
+    const aside = completed
+      ? `\n_I also saw ${completed} ask${completed === 1 ? " that was" : "s that were"} later proved finished._\n`
+      : "";
     await say({
-      text:
-        `I searched the last ${SCAN_LOOKBACK_DAYS} days of this channel with Slack's Real-Time Search and found ` +
-        `*${open.length} open loop${open.length === 1 ? "" : "s"}* with no sign the work was ever done, ` +
-        `from before I was even watching:\n${lines.join("\n")}\n${aside ? `\n_${aside.trim()}_\n` : ""}\n${disclaimer}`,
+      text: `I searched the last ${SCAN_LOOKBACK_DAYS} days of this channel with Slack's Real-Time Search.\n\n${sections.join("\n\n")}\n${aside}\n${disclaimer}`,
       thread_ts: threadTs,
     });
     return;
